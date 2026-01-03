@@ -42,11 +42,28 @@ public class GameSessionStartedConsumer {
      */
     @RabbitListener(queues = "${game.events.queues.session-started}")
     public void onGameSessionStarted(Map<String, Object> event) {
+        log.info("GameSessionStartedConsumer: Received game.session.started event: {}", event);
         try {
+            // Support both snake_case and camelCase
             String sessionIdStr = (String) event.get("session_id");
+            if (sessionIdStr == null) {
+                sessionIdStr = (String) event.get("sessionId");
+            }
+            
             String lobbyIdStr = (String) event.get("lobby_id");
+            if (lobbyIdStr == null) {
+                lobbyIdStr = (String) event.get("lobbyId");
+            }
+            
             String gameType = (String) event.get("game_type");
+            if (gameType == null) {
+                gameType = (String) event.get("gameType");
+            }
+            
             String status = (String) event.get("status");
+            
+            log.info("GameSessionStartedConsumer: Parsed event - sessionId={}, lobbyId={}, gameType={}, status={}", 
+                    sessionIdStr, lobbyIdStr, gameType, status);
             
             if (sessionIdStr == null || lobbyIdStr == null) {
                 log.warn("Received game.session.started event without session_id or lobby_id: {}", event);

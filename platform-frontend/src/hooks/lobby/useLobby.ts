@@ -65,7 +65,12 @@ export const useStartLobby = () => {
 
   return useMutation({
     mutationFn: ({ lobbyId, data }: { lobbyId: string; data: StartLobbyRequest }) => lobbyService.start(lobbyId, data),
-    onSuccess: () => [LOBBY.ALL, LOBBY.CURRENT_PLAYER].forEach(queryKey => queryClient.invalidateQueries({ queryKey })),
+    onSuccess: (data, variables) => {
+      // Invalidate all lobby queries to refresh data
+      [LOBBY.ALL, LOBBY.CURRENT_PLAYER, LOBBY.BY_ID(variables.lobbyId)].forEach(queryKey => 
+        queryClient.invalidateQueries({ queryKey })
+      );
+    },
   });
 };
 
@@ -136,11 +141,27 @@ export const useCancelLobby = () => {
 export const useExternalGameInstance = (lobbyId: string, enabled: boolean = true) => {
   return useQuery({
     queryKey: [...LOBBY.BY_ID(lobbyId), 'external-game-instance'],
-    queryFn: () => lobbyService.getExternalGameInstance(lobbyId),
+    queryFn: async () => {
+      console.log(`[useExternalGameInstance] Fetching external game instance for lobby ${lobbyId}`)
+      try {
+        const result = await lobbyService.getExternalGameInstance(lobbyId)
+        console.log(`[useExternalGameInstance] Result:`, result)
+        return result
+      } catch (error) {
+        console.error(`[useExternalGameInstance] Error fetching:`, error)
+        throw error
+      }
+    },
     enabled: enabled && Boolean(lobbyId),
     refetchInterval: (data) => {
       // Poll every 2 seconds if external game instance hasn't been created yet
-      return data?.hasExternalGameInstance ? false : 2000;
+      const shouldPoll = !data?.hasExternalGameInstance
+      if (shouldPoll) {
+        console.log(`[useExternalGameInstance] Polling for external game instance (lobbyId: ${lobbyId}, hasInstance: ${data?.hasExternalGameInstance})`)
+      } else {
+        console.log(`[useExternalGameInstance] External game instance found, stopping polling:`, data)
+      }
+      return shouldPoll ? 2000 : false
     },
   });
 };;

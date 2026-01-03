@@ -68,6 +68,9 @@ class GameSessionEventConsumer:
 
     def _publish_session_started(self, session: Any, lobby_id: Optional[str]) -> None:
         """Publish game.session.started event."""
+        # Create a new RabbitMQ client for publishing (Pika connections are not thread-safe)
+        from app.shared.messaging.rabbitmq_client import RabbitMQClient
+        publish_client = None
         try:
             from datetime import datetime
 
@@ -87,7 +90,10 @@ class GameSessionEventConsumer:
                 "type": "GAME_SESSION_STARTED"
             }
 
-            self.rabbitmq_client.publish_event(
+            # Create a new client instance for publishing
+            publish_client = RabbitMQClient()
+            publish_client.connect()
+            publish_client.publish_event(
                 routing_key="game.session.started",
                 event=event
             )
@@ -96,6 +102,13 @@ class GameSessionEventConsumer:
 
         except Exception as e:
             logger.error(f"Failed to publish session started event: {e}", exc_info=True)
+        finally:
+            # Clean up the publishing client
+            if publish_client:
+                try:
+                    publish_client.disconnect()
+                except Exception:
+                    pass
 
     def _consume_session_start_requests(self) -> None:
         """Consume session start request messages."""

@@ -5,6 +5,7 @@ Consumes game events from RabbitMQ and processes them.
 import logging
 import signal
 import sys
+import threading
 from typing import Optional, Any
 
 from app.config import settings
@@ -39,14 +40,17 @@ try:
     
     if settings.MODULE_GAMES_ENABLED:
         # Ensure games module is set up (registers services in container)
+        # Note: setup_module() also starts a consumer, but we'll create our own
+        # to have better control over lifecycle management
         from app.modules.games import setup_module
-        setup_module()  # This registers GameSessionService in container
+        setup_module()  # This registers GameSessionService in container and starts its own consumer
         
         # Get GameSessionService from DI container
+        # We create our own consumer instance for better lifecycle control
         if container.has(GameSessionService):
             session_service = container.get(GameSessionService)
             _session_consumer = GameSessionEventConsumer(session_service)
-            logger.info("Game session consumer initialized")
+            logger.info("Game session consumer initialized (dedicated consumer process)")
         else:
             logger.warning("GameSessionService not found in container")
 except ImportError as e:
@@ -86,10 +90,12 @@ def main() -> None:
     logger.info("Starting game event consumer...")
     
     consumer: Optional[Any] = None
+    shutdown_event = threading.Event()
     
     def signal_handler(sig: int, frame: Any) -> None:
         """Handle shutdown signals."""
         logger.info("Shutdown signal received, stopping consumers...")
+        shutdown_event.set()
         if consumer:
             if hasattr(consumer, 'stop_consuming'):
                 consumer.stop_consuming()
@@ -108,12 +114,21 @@ def main() -> None:
             logger.info("Consumer setup complete, starting to consume messages...")
         else:
             logger.warning("No consumers configured")
+            # If no consumers, exit early
+            return
+        
+        # Keep the main thread alive by waiting for shutdown signal
+        # This prevents the process from exiting while consumers run in background threads
+        logger.info("Consumer is running. Waiting for shutdown signal...")
+        shutdown_event.wait()
+        
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
     except Exception as e:
         logger.error(f"Fatal error in consumer: {e}", exc_info=True)
         sys.exit(1)
     finally:
+        logger.info("Shutting down consumers...")
         if consumer:
             if hasattr(consumer, 'stop_consuming'):
                 consumer.stop_consuming()

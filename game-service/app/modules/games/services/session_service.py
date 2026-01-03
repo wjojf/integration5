@@ -43,12 +43,26 @@ class GameSessionService:
             session_id = str(uuid.uuid4())
         
         try:
-            game = self.game_factory.create_game(game_type)
-            initial_state = game.create_initial_state(
-                player_ids=player_ids,
-                starting_player_id=starting_player_id,
-                configuration=configuration or {}
-            )
+            # For external games like chess, create a minimal state without using game factory
+            if game_type == "chess":
+                # Chess is managed externally, so we create a minimal tracking state
+                initial_state = {
+                    "game_type": "chess",
+                    "player_ids": player_ids,
+                    "current_player_id": starting_player_id,
+                    "status": "active",
+                    "external_game_id": configuration.get("externalGameId") if configuration else None,
+                    "configuration": configuration or {}
+                }
+            else:
+                # For internal games (like Connect Four), use game factory
+                game = self.game_factory.create_game(game_type)
+                initial_state = game.create_initial_state(
+                    player_ids=player_ids,
+                    starting_player_id=starting_player_id,
+                    configuration=configuration or {}
+                )
+                initial_state = initial_state.to_dict()
             
             session = GameSession(
                 session_id=session_id,
@@ -58,7 +72,7 @@ class GameSessionService:
                 player_ids=player_ids,
                 current_player_id=starting_player_id,
                 status=GameSessionStatus.ACTIVE,
-                game_state=initial_state.to_dict(),
+                game_state=initial_state,
                 total_moves=0,
                 started_at=datetime.utcnow()
             )

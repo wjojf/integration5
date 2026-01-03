@@ -77,16 +77,20 @@ class GameWebSocketEventConsumer:
 
     # --- RabbitMQ message handlers ----------------------------------------
 
+    def _get_session_id(self, message: Dict[str, Any]) -> Optional[str]:
+        """Extract session_id from message, supporting both snake_case and camelCase."""
+        return message.get("session_id") or message.get("sessionId")
+
     def _handle_move_applied(self, message: Dict[str, Any]) -> None:
-        session_id = message.get("session_id")
+        session_id = self._get_session_id(message)
         self._enqueue_event("move_applied", session_id, message)
 
     def _handle_session_started(self, message: Dict[str, Any]) -> None:
-        session_id = message.get("session_id")
+        session_id = self._get_session_id(message)
         self._enqueue_event("session_started", session_id, message)
 
     def _handle_session_ended(self, message: Dict[str, Any]) -> None:
-        session_id = message.get("session_id")
+        session_id = self._get_session_id(message)
         self._enqueue_event("session_ended", session_id, message)
 
     # --- Async processing of messages -> WebSocket ------------------------

@@ -216,6 +216,7 @@ spring:
             allowedOrigins:
               - "http://localhost:5173"  # Platform frontend
               - "http://localhost:3333"  # Chess game frontend
+              - "http://localhost:8080"  # Gateway (for direct connections)
             allowedMethods:
               - GET
               - POST

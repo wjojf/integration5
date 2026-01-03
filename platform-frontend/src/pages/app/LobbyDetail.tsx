@@ -28,23 +28,47 @@ export const LobbyDetail = () => {
   
   // Poll for external game instance if lobby is started and game is chess
   const isChessGame = lobby?.gameId === CHESS_GAME_ID
-  const isLobbyStarted = lobby?.status === "STARTED"
+  const isLobbyStarted = lobby?.status === "STARTED" || lobby?.status === "IN_PROGRESS"
+  const shouldPoll = isLobbyStarted && isChessGame && Boolean(lobbyId)
+  
   const { data: externalGameData, isFetching: isFetchingExternalGame } = useExternalGameInstance(
     lobbyId || '',
-    isLobbyStarted && isChessGame
+    shouldPoll
   )
+  
+  // Debug logging
+  useEffect(() => {
+    if (shouldPoll) {
+      console.log("Polling for external game instance:", {
+        lobbyId,
+        gameId: lobby?.gameId,
+        status: lobby?.status,
+        isChessGame,
+        isLobbyStarted
+      })
+    }
+  }, [shouldPoll, lobbyId, lobby?.gameId, lobby?.status, isChessGame, isLobbyStarted])
   
   // Redirect to chess game when external game instance is available
   useEffect(() => {
+    console.log("External game data changed:", externalGameData)
     if (externalGameData?.hasExternalGameInstance && externalGameData.externalGameInstanceId) {
       const externalGameInstanceId = externalGameData.externalGameInstanceId
+      console.log("Redirecting to chess game:", `${CHESS_FRONTEND_URL}/game/${externalGameInstanceId}`)
       toast.success("Chess game ready! Redirecting...")
       // Small delay to show the toast
       setTimeout(() => {
         window.location.href = `${CHESS_FRONTEND_URL}/game/${externalGameInstanceId}`
       }, 1000)
+    } else if (externalGameData && !externalGameData.hasExternalGameInstance) {
+      console.log("External game instance not yet available, polling...", {
+        lobbyId,
+        hasData: !!externalGameData,
+        hasInstance: externalGameData.hasExternalGameInstance,
+        instanceId: externalGameData.externalGameInstanceId
+      })
     }
-  }, [externalGameData])
+  }, [externalGameData, lobbyId])
   
   const isHost = lobby?.hostId === keycloak.tokenParsed?.sub
   const isFull = lobby ? lobby.playerIds.length >= lobby.maxPlayers : false
@@ -57,12 +81,17 @@ export const LobbyDetail = () => {
     }
     
     try {
-      await startLobby.mutateAsync({
+      const updatedLobby = await startLobby.mutateAsync({
         lobbyId: lobby.id,
         data: { gameId: lobby.gameId }
       })
       toast.success("Lobby started! Creating chess game...")
-      refetch()
+      // Refetch to get updated lobby with STARTED status
+      await refetch()
+      // Also check if it's a chess game and start polling immediately
+      if (updatedLobby?.gameId === CHESS_GAME_ID && updatedLobby?.status === "STARTED") {
+        console.log("Chess lobby started, waiting for external game instance...")
+      }
     } catch (error) {
       console.error('Failed to start lobby:', error)
       toast.error("Failed to start lobby")

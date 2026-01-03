@@ -6,6 +6,7 @@ import com.banditgames.platform.player.domain.Player;
 import com.banditgames.platform.player.port.out.LoadPlayerPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
@@ -17,7 +18,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -38,6 +42,7 @@ public class ChessGameLobbyHandler {
     private final LoadPlayerPort loadPlayerPort;
     private final ExternalGameInstanceService externalGameInstanceService;
     private final RestTemplate restTemplate;
+    private final RabbitTemplate rabbitTemplate;
     
     // Chess game ID from game service (hardcoded for now)
     private static final UUID CHESS_GAME_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440002");
@@ -98,6 +103,9 @@ public class ChessGameLobbyHandler {
                     chessGameId
             );
             
+            // 4. Publish game.session.start.requested event to create session in game-service
+            publishGameSessionStartRequested(chessGameId, event.lobbyId(), event.gameId(), player1, player2);
+            
             log.info("Chess game created successfully - lobbyId={}, chessGameId={}, players=[{}, {}]",
                     event.lobbyId(), chessGameId, player1.getUsername(), player2.getUsername());
             
@@ -148,6 +156,50 @@ public class ChessGameLobbyHandler {
         } catch (Exception e) {
             log.error("Failed to register chess game with platform - chessGameId={}", chessGameId, e);
             throw e;
+        }
+    }
+    
+    /**
+     * Publishes game.session.start.requested event to trigger session creation in game-service.
+     */
+    private void publishGameSessionStartRequested(UUID chessGameId, UUID lobbyId, UUID gameId, Player player1, Player player2) {
+        try {
+            Map<String, Object> gameServiceEvent = new HashMap<>();
+            gameServiceEvent.put("eventId", UUID.randomUUID().toString());
+            gameServiceEvent.put("timestamp", Instant.now().toString());
+            gameServiceEvent.put("session_id", chessGameId.toString());
+            gameServiceEvent.put("game_id", gameId.toString());
+            gameServiceEvent.put("game_type", "chess");
+            gameServiceEvent.put("lobby_id", lobbyId != null ? lobbyId.toString() : null);
+            List<String> playerIds = new ArrayList<>();
+            playerIds.add(player1.getPlayerId().toString());
+            playerIds.add(player2.getPlayerId().toString());
+            gameServiceEvent.put("player_ids", playerIds);
+            gameServiceEvent.put("starting_player_id", player1.getPlayerId().toString());
+            
+            Map<String, Object> gameConfiguration = new HashMap<>();
+            gameConfiguration.put("whitePlayer", player1.getUsername());
+            gameConfiguration.put("blackPlayer", player2.getUsername());
+            gameConfiguration.put("whitePlayerId", player1.getPlayerId().toString());
+            gameConfiguration.put("blackPlayerId", player2.getPlayerId().toString());
+            gameConfiguration.put("initialFen", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+            gameConfiguration.put("status", "ACTIVE");
+            gameConfiguration.put("externalGameId", chessGameId.toString()); // Store external chess game ID
+            gameServiceEvent.put("configuration", gameConfiguration);
+            gameServiceEvent.put("type", "GAME_SESSION_START_REQUESTED");
+            
+            rabbitTemplate.convertAndSend(
+                    gameEventsExchange,
+                    "game.session.start.requested",
+                    gameServiceEvent
+            );
+            
+            log.info("Published game.session.start.requested event - chessGameId={}, lobbyId={}, players=[{}, {}]",
+                    chessGameId, lobbyId, player1.getUsername(), player2.getUsername());
+            
+        } catch (Exception e) {
+            log.error("Failed to publish game.session.start.requested event - chessGameId={}", chessGameId, e);
+            // Don't throw - game creation should still succeed
         }
     }
     

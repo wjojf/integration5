@@ -48,11 +48,23 @@ class GameLoggerEventConsumer:
 
     def _dict_to_game_started_event(self, data: Dict[str, Any]) -> GameStartedEvent:
         """Convert dictionary to GameStartedEvent."""
+        player_ids = data.get('playerIds', [])
+        starting_player_id = data.get('startingPlayerId')
+        if not starting_player_id and player_ids:
+            # Default to first player if starting_player_id not provided
+            starting_player_id = player_ids[0]
+        elif not starting_player_id:
+            # Fallback to empty string if no players
+            starting_player_id = ''
+        
         return GameStartedEvent(
             event_id=data.get('eventId', ''),
             game_id=data.get('gameId', ''),
             game_type=data.get('gameType', ''),
-            player_ids=data.get('playerIds', []),
+            lobby_id=data.get('lobbyId'),
+            player_ids=player_ids,
+            starting_player_id=starting_player_id,
+            game_configuration=data.get('gameConfiguration', {}),
             timestamp=self._parse_timestamp(data.get('timestamp')),
         )
 
@@ -92,15 +104,17 @@ class GameLoggerEventConsumer:
         """Handle game start event."""
         try:
             if len(event.player_ids) >= 2:
-                self.game_logger_service.create_game_session(
-                    game_id=event.game_id,
+                # Use game_id as session_id (for chess games, they are the same)
+                session_id = event.game_id
+                
+                self.game_logger_service.create_session(
+                    session_id=session_id,
                     game_type=event.game_type,
-                    player1_id=event.player_ids[0] if len(event.player_ids) > 0 else "player1",
-                    player2_id=event.player_ids[1] if len(event.player_ids) > 1 else "player2",
-                    player1_type="human",
-                    player2_type="human",
+                    p1_type="human",
+                    p2_type="human",
+                    tag=f"lobby_{event.lobby_id}" if event.lobby_id else None,
                 )
-                logger.info(f"Created game session: game_id={event.game_id}, game_type={event.game_type}")
+                logger.info(f"Created game session: session_id={session_id}, game_type={event.game_type}, lobby_id={event.lobby_id}")
         except Exception as e:
             logger.error(f"Failed to create game session: {e}", exc_info=True)
 

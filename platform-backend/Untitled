@@ -1,0 +1,32 @@
+0 34.48     symbol:   method getBlackPlayerId()
+#0 34.49     location: variable message of type ChessGameCreatedMessage
+#0 34.49   /app/src/main/java/com/banditgames/platform/acl/adapter/ChessGameACLAdapter.java:100: error: cannot find symbol
+#0 34.49                           whitePlayerId = UUID.fromString(message.getWhitePlayerId());
+#0 34.49                                                                  ^
+#0 34.49     symbol:   method getWhitePlayerId()
+#0 34.49     location: variable message of type ChessGameCreatedMessage
+#0 34.49   /app/src/main/java/com/banditgames/platform/acl/adapter/ChessGameACLAdapter.java:101: error: cannot find symbol
+#0 34.49                           blackPlayerId = UUID.fromString(message.getBlackPlayerId());
+#0 34.49                                                                  ^
+#0 34.49     symbol:   method getBlackPlayerId()
+#0 34.49     location: variable message of type ChessGameCreatedMessage
+#0 34.49   4 errors
+#0 34.49 
+#0 34.49 * Try:
+#0 34.50 > Check your code and dependencies to fix the compilation error(s)
+#0 34.50 > Run with --scan to get full insights.
+#0 34.56 
+#0 34.56 Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+#0 34.56 
+#0 34.56 You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+#0 34.56 
+#0 34.56 For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+#0 34.56 
+#0 34.56 2 actionable tasks: 1 executed, 1 up-to-date
+#0 34.57 BUILD FAILED in 34s
+------
+ERROR: failed to solve: executor failed running [/bin/sh -c gradle clean build -x test --no-daemon]: exit code: 1
+ERROR: Service 'platform-backend' failed to build : Build failed
+
+╭─ ~/Documents/dev/kdg/integration5 │ main !11 ?1 ·········································································································· 1 х │ 41s │ 14:52:19 
+╰─ 

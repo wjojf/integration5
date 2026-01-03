@@ -15,6 +15,9 @@ import { useGetAllGames } from "../../hooks/game/useGame";
 const { Button, Input, Select, TextArea, Label } = InputComponents
 const { Card, CardContent, CardHeader, CardTitle } = DisplayComponents
 
+// Chess game ID from game service
+const CHESS_GAME_ID = "550e8400-e29b-41d4-a716-446655440002"
+
 export const Lobbies = () => {
   const { keycloak } = useKeycloak();
   const navigate = useNavigate();
@@ -84,9 +87,17 @@ export const Lobbies = () => {
 
   // Navigate to game page when sessionId is available
   // Only redirect if user is actually in the lobby (check playerIds) and game is not ended
+  // Skip for chess games - they are handled by LobbyDetail with external game instance redirect
   useEffect(() => {
     const currentUserId = keycloak.tokenParsed?.sub;
     const sessionId = currentLobby?.sessionId;
+    const isChessGame = currentLobby?.gameId === CHESS_GAME_ID;
+    
+    // For chess games, don't redirect here - LobbyDetail handles it with external game instance
+    if (isChessGame) {
+      return;
+    }
+    
     if (sessionId && 
         currentUserId && 
         currentLobby.playerIds?.includes(currentUserId) &&
@@ -113,7 +124,7 @@ export const Lobbies = () => {
       };
       checkAndRedirect();
     }
-  }, [currentLobby?.sessionId, currentLobby?.id, currentLobby?.playerIds, currentLobby?.status, keycloak.tokenParsed?.sub, navigate]);
+  }, [currentLobby?.sessionId, currentLobby?.id, currentLobby?.gameId, currentLobby?.playerIds, currentLobby?.status, keycloak.tokenParsed?.sub, navigate]);
 
   const handleSearch = () => {
     setSearchParams({

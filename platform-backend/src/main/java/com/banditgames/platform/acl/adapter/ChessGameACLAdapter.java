@@ -85,7 +85,7 @@ public class ChessGameACLAdapter {
             UUID whitePlayerId = findPlayerIdByName(message.getWhitePlayer());
             UUID blackPlayerId = findPlayerIdByName(message.getBlackPlayer());
 
-            // Use player IDs if found, otherwise use null (will be logged but event still published)
+            // Use player IDs if found, otherwise use empty list (will be logged but event still published)
             List<String> playerIds;
             String startingPlayerId = null;
             
@@ -115,14 +115,14 @@ public class ChessGameACLAdapter {
             if (startingPlayerId != null) {
                 gameServiceEvent.put("startingPlayerId", startingPlayerId);
             }
-            gameServiceEvent.put("gameConfiguration", Map.of(
-                "whitePlayer", message.getWhitePlayer(),
-                "blackPlayer", message.getBlackPlayer(),
-                "whitePlayerId", whitePlayerId != null ? whitePlayerId.toString() : "unknown",
-                "blackPlayerId", blackPlayerId != null ? blackPlayerId.toString() : "unknown",
-                "initialFen", message.getCurrentFen() != null ? message.getCurrentFen() : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                "status", message.getStatus()
-            ));
+            Map<String, Object> gameConfiguration = new HashMap<>();
+            gameConfiguration.put("whitePlayer", message.getWhitePlayer() != null ? message.getWhitePlayer() : "");
+            gameConfiguration.put("blackPlayer", message.getBlackPlayer() != null ? message.getBlackPlayer() : "");
+            gameConfiguration.put("whitePlayerId", whitePlayerId != null ? whitePlayerId.toString() : "unknown");
+            gameConfiguration.put("blackPlayerId", blackPlayerId != null ? blackPlayerId.toString() : "unknown");
+            gameConfiguration.put("initialFen", message.getCurrentFen() != null ? message.getCurrentFen() : "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+            gameConfiguration.put("status", message.getStatus() != null ? message.getStatus() : "");
+            gameServiceEvent.put("gameConfiguration", gameConfiguration);
             gameServiceEvent.put("type", "GAME_SESSION_STARTED");
 
             rabbitTemplate.convertAndSend(
@@ -209,16 +209,16 @@ public class ChessGameACLAdapter {
                 gameServiceEvent.put("winnerId", winnerId);
             }
             gameServiceEvent.put("gameResult", mapChessEndReasonToGameResult(message.getEndReason(), message.getWinner()));
-            gameServiceEvent.put("finalGameState", Map.of(
-                "fen", message.getFinalFen() != null ? message.getFinalFen() : "",
-                "totalMoves", message.getTotalMoves() != null ? message.getTotalMoves() : 0,
-                "endReason", message.getEndReason() != null ? message.getEndReason() : "",
-                "winner", message.getWinner() != null ? message.getWinner() : "",
-                "whitePlayer", message.getWhitePlayer() != null ? message.getWhitePlayer() : "",
-                "blackPlayer", message.getBlackPlayer() != null ? message.getBlackPlayer() : "",
-                "whitePlayerId", whitePlayerId != null ? whitePlayerId.toString() : "unknown",
-                "blackPlayerId", blackPlayerId != null ? blackPlayerId.toString() : "unknown"
-            ));
+            Map<String, Object> finalGameState = new HashMap<>();
+            finalGameState.put("fen", message.getFinalFen() != null ? message.getFinalFen() : "");
+            finalGameState.put("totalMoves", message.getTotalMoves() != null ? message.getTotalMoves() : 0);
+            finalGameState.put("endReason", message.getEndReason() != null ? message.getEndReason() : "");
+            finalGameState.put("winner", message.getWinner() != null ? message.getWinner() : "");
+            finalGameState.put("whitePlayer", message.getWhitePlayer() != null ? message.getWhitePlayer() : "");
+            finalGameState.put("blackPlayer", message.getBlackPlayer() != null ? message.getBlackPlayer() : "");
+            finalGameState.put("whitePlayerId", whitePlayerId != null ? whitePlayerId.toString() : "unknown");
+            finalGameState.put("blackPlayerId", blackPlayerId != null ? blackPlayerId.toString() : "unknown");
+            gameServiceEvent.put("finalGameState", finalGameState);
             gameServiceEvent.put("type", "GAME_SESSION_ENDED");
 
             // Publish to game-service exchange for logging
@@ -294,16 +294,18 @@ public class ChessGameACLAdapter {
             if (playerId != null) {
                 gameServiceEvent.put("playerId", playerId.toString());
             }
-            gameServiceEvent.put("move", Map.of(
-                "fromSquare", message.getFromSquare(),
-                "toSquare", message.getToSquare(),
-                "sanNotation", message.getSanNotation(),
-                "fenAfterMove", message.getFenAfterMove() != null ? message.getFenAfterMove() : "",
-                "player", message.getPlayer(),
-                "playerName", "WHITE".equals(message.getPlayer()) ? message.getWhitePlayer() : message.getBlackPlayer(),
-                "playerId", playerId != null ? playerId.toString() : "unknown",
-                "moveNumber", message.getMoveNumber() != null ? message.getMoveNumber() : 0
-            ));
+            Map<String, Object> moveData = new HashMap<>();
+            moveData.put("fromSquare", message.getFromSquare() != null ? message.getFromSquare() : "");
+            moveData.put("toSquare", message.getToSquare() != null ? message.getToSquare() : "");
+            moveData.put("sanNotation", message.getSanNotation() != null ? message.getSanNotation() : "");
+            moveData.put("fenAfterMove", message.getFenAfterMove() != null ? message.getFenAfterMove() : "");
+            moveData.put("player", message.getPlayer() != null ? message.getPlayer() : "");
+            moveData.put("playerName", "WHITE".equals(message.getPlayer()) 
+                ? (message.getWhitePlayer() != null ? message.getWhitePlayer() : "") 
+                : (message.getBlackPlayer() != null ? message.getBlackPlayer() : ""));
+            moveData.put("playerId", playerId != null ? playerId.toString() : "unknown");
+            moveData.put("moveNumber", message.getMoveNumber() != null ? message.getMoveNumber() : 0);
+            gameServiceEvent.put("move", moveData);
             gameServiceEvent.put("type", "GAME_MOVE_REQUEST");
 
             rabbitTemplate.convertAndSend(
