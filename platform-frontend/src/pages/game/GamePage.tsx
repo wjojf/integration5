@@ -16,6 +16,9 @@ import type { GameSession } from "../../service/game.service";
 const { Button } = InputComponents
 const { Card, CardContent, CardHeader, CardTitle } = DisplayComponents
 
+// Chess game ID from game service
+const CHESS_GAME_ID = "550e8400-e29b-41d4-a716-446655440002"
+
 export const GamePage = () => {
   const { lobbyId, sessionId } = useParams<{ lobbyId?: string; sessionId?: string }>();
   const location = useLocation();
@@ -27,6 +30,16 @@ export const GamePage = () => {
   const isAIGame = location.pathname.includes('/game/ai/');
   
   const { data: lobby, isLoading: isLoadingLobby, refetch: refetchLobby } = useLobbyById(lobbyId || '');
+  
+  // Check if this is a chess game - if so, redirect to lobby detail page which has embedded chess UI
+  const isChessGame = lobby?.gameId === CHESS_GAME_ID;
+  
+  // Redirect chess games to lobby detail page (which has embedded chess UI)
+  useEffect(() => {
+    if (!isAIGame && lobbyId && isChessGame) {
+      navigate(`/app/lobbies/${lobbyId}`, { replace: true });
+    }
+  }, [isChessGame, lobbyId, isAIGame, navigate]);
   const { data: currentLobby } = useCurrentPlayerLobby();
   const { data: gamesResponse } = useGetAllGames();
   const games = gamesResponse?.games || [];
@@ -299,6 +312,15 @@ export const GamePage = () => {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Lobbies
         </Button>
+      </div>
+    );
+  }
+
+  // If this is a chess game, don't render - redirect should handle it, but show loading just in case
+  if (!isAIGame && isChessGame) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Redirecting to chess game...</p>
       </div>
     );
   }

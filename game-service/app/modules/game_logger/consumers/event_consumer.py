@@ -83,10 +83,14 @@ class GameLoggerEventConsumer:
 
     def _dict_to_game_ended_event(self, data: Dict[str, Any]) -> GameEndedEvent:
         """Convert dictionary to GameEndedEvent."""
+        # Support both snake_case and camelCase field names
+        winner_id = data.get('winner_id') or data.get('winnerId')
+        
         return GameEndedEvent(
             event_id=data.get('eventId', ''),
             game_id=data.get('gameId', ''),
             game_type=data.get('gameType', ''),
+            winner_id=winner_id,
             final_game_state=data.get('finalGameState', {}),
             game_result=data.get('gameResult', ''),
             timestamp=self._parse_timestamp(data.get('timestamp')),

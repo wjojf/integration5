@@ -146,18 +146,35 @@ export const useExternalGameInstance = (lobbyId: string, enabled: boolean = true
       try {
         const result = await lobbyService.getExternalGameInstance(lobbyId)
         console.log(`[useExternalGameInstance] Result:`, result)
+        // Ensure we always return a valid object, even if the API returns null/undefined
+        if (!result) {
+          console.warn(`[useExternalGameInstance] API returned null/undefined, returning default object`)
+          return {
+            lobbyId,
+            gameId: null,
+            externalGameInstanceId: null,
+            hasExternalGameInstance: false
+          }
+        }
         return result
-      } catch (error) {
+      } catch (error: any) {
         console.error(`[useExternalGameInstance] Error fetching:`, error)
-        throw error
+        // Return a default object on error instead of throwing, so polling can continue
+        return {
+          lobbyId,
+          gameId: null,
+          externalGameInstanceId: null,
+          hasExternalGameInstance: false
+        }
       }
     },
     enabled: enabled && Boolean(lobbyId),
+    retry: false, // Don't retry on error, just return the default object
     refetchInterval: (data) => {
       // Poll every 2 seconds if external game instance hasn't been created yet
       const shouldPoll = !data?.hasExternalGameInstance
       if (shouldPoll) {
-        console.log(`[useExternalGameInstance] Polling for external game instance (lobbyId: ${lobbyId}, hasInstance: ${data?.hasExternalGameInstance})`)
+        console.log(`[useExternalGameInstance] Polling for external game instance (lobbyId: ${lobbyId}, hasInstance: ${data?.hasExternalGameInstance}, data:`, data)
       } else {
         console.log(`[useExternalGameInstance] External game instance found, stopping polling:`, data)
       }

@@ -31,10 +31,23 @@ export const LobbyDetail = () => {
   const isLobbyStarted = lobby?.status === "STARTED" || lobby?.status === "IN_PROGRESS"
   const shouldPoll = isLobbyStarted && isChessGame && Boolean(lobbyId)
   
-  const { data: externalGameData, isFetching: isFetchingExternalGame } = useExternalGameInstance(
+  const { data: externalGameData, isFetching: isFetchingExternalGame, error: externalGameError } = useExternalGameInstance(
     lobbyId || '',
     shouldPoll
   )
+  
+  // Log external game data changes for debugging
+  useEffect(() => {
+    if (shouldPoll) {
+      console.log("[LobbyDetail] External game instance state:", {
+        hasData: !!externalGameData,
+        data: externalGameData,
+        isFetching: isFetchingExternalGame,
+        error: externalGameError,
+        shouldPoll
+      })
+    }
+  }, [externalGameData, isFetchingExternalGame, externalGameError, shouldPoll])
   
   // Debug logging
   useEffect(() => {
@@ -49,23 +62,22 @@ export const LobbyDetail = () => {
     }
   }, [shouldPoll, lobbyId, lobby?.gameId, lobby?.status, isChessGame, isLobbyStarted])
   
-  // Redirect to chess game when external game instance is available
+  // Show toast when chess game is ready
   useEffect(() => {
     console.log("External game data changed:", externalGameData)
     if (externalGameData?.hasExternalGameInstance && externalGameData.externalGameInstanceId) {
       const externalGameInstanceId = externalGameData.externalGameInstanceId
-      console.log("Redirecting to chess game:", `${CHESS_FRONTEND_URL}/game/${externalGameInstanceId}`)
-      toast.success("Chess game ready! Redirecting...")
-      // Small delay to show the toast
-      setTimeout(() => {
-        window.location.href = `${CHESS_FRONTEND_URL}/game/${externalGameInstanceId}`
-      }, 1000)
+      const chessGameUrl = `${CHESS_FRONTEND_URL}/game/${externalGameInstanceId}`
+      console.log("Chess game ready for embedding:", chessGameUrl)
+      console.log("Full external game data:", JSON.stringify(externalGameData, null, 2))
+      toast.success("Chess game ready!")
     } else if (externalGameData && !externalGameData.hasExternalGameInstance) {
       console.log("External game instance not yet available, polling...", {
         lobbyId,
         hasData: !!externalGameData,
         hasInstance: externalGameData.hasExternalGameInstance,
-        instanceId: externalGameData.externalGameInstanceId
+        instanceId: externalGameData.externalGameInstanceId,
+        fullData: externalGameData
       })
     }
   }, [externalGameData, lobbyId])
@@ -161,8 +173,26 @@ export const LobbyDetail = () => {
     )
   }
   
+  // Check if we should show the embedded chess game
+  const showEmbeddedChess = isChessGame && 
+    (lobby.status === "STARTED" || lobby.status === "IN_PROGRESS") && 
+    externalGameData?.hasExternalGameInstance && 
+    externalGameData.externalGameInstanceId
+  
+  // Debug logging for embedded chess game display
+  useEffect(() => {
+    console.log("Embedded chess game check:", {
+      isChessGame,
+      lobbyStatus: lobby?.status,
+      hasExternalGameData: !!externalGameData,
+      hasExternalGameInstance: externalGameData?.hasExternalGameInstance,
+      externalGameInstanceId: externalGameData?.externalGameInstanceId,
+      showEmbeddedChess
+    })
+  }, [isChessGame, lobby?.status, externalGameData, showEmbeddedChess])
+
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <div>
         <h1 className="mb-2">{lobby.name || "Lobby Details"}</h1>
         {lobby.description && (
@@ -170,91 +200,155 @@ export const LobbyDetail = () => {
         )}
       </div>
       
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg flex items-center gap-2">
-                {isHost && <Crown className="w-4 h-4 text-yellow-500" />}
-                {isHost ? "Your Lobby" : "Lobby"}
-              </CardTitle>
-              {lobby.gameId && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  Game: {lobby.gameId === CHESS_GAME_ID ? "Chess" : lobby.gameId}
-                </p>
-              )}
-            </div>
-            <Badge className={
-              lobby.status === "WAITING" ? "bg-yellow-500/20 text-yellow-500" :
-              lobby.status === "STARTED" ? "bg-green-500/20 text-green-500" :
-              "bg-gray-500/20 text-gray-500"
-            }>
-              {lobby.status}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="w-4 h-4" />
-            <span>
-              {lobby.playerIds.length} / {lobby.maxPlayers} players
-            </span>
-          </div>
-          
-          {lobby.status === "WAITING" && (
-            <div className="space-y-2">
-              {isChessGame && !isFull && (
-                <p className="text-sm text-muted-foreground">
-                  Waiting for {lobby.maxPlayers - lobby.playerIds.length} more player(s) to join...
-                </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Lobby Info Card - Sidebar on large screens */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    {isHost && <Crown className="w-4 h-4 text-yellow-500" />}
+                    {isHost ? "Your Lobby" : "Lobby"}
+                  </CardTitle>
+                  {lobby.gameId && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Game: {lobby.gameId === CHESS_GAME_ID ? "Chess" : lobby.gameId}
+                    </p>
+                  )}
+                </div>
+                <Badge className={
+                  lobby.status === "WAITING" ? "bg-yellow-500/20 text-yellow-500" :
+                  lobby.status === "STARTED" || lobby.status === "IN_PROGRESS" ? "bg-green-500/20 text-green-500" :
+                  "bg-gray-500/20 text-gray-500"
+                }>
+                  {lobby.status}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Users className="w-4 h-4" />
+                <span>
+                  {lobby.playerIds.length} / {lobby.maxPlayers} players
+                </span>
+              </div>
+              
+              {lobby.status === "WAITING" && (
+                <div className="space-y-2">
+                  {isChessGame && !isFull && (
+                    <p className="text-sm text-muted-foreground">
+                      Waiting for {lobby.maxPlayers - lobby.playerIds.length} more player(s) to join...
+                    </p>
+                  )}
+                  
+                  {canStart && (
+                    <Button
+                      onClick={handleStartLobby}
+                      disabled={startLobby.isPending}
+                      className="w-full"
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      {startLobby.isPending ? "Starting..." : "Start Chess Game"}
+                    </Button>
+                  )}
+                </div>
               )}
               
-              {canStart && (
+              {(lobby.status === "STARTED" || lobby.status === "IN_PROGRESS") && isChessGame && !showEmbeddedChess && (
+                <div className="space-y-2">
+                  {isFetchingExternalGame || !externalGameData?.hasExternalGameInstance ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Creating chess game... Please wait...</span>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      Waiting for chess game to be created...
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Force Leave Game button - always visible */}
+              <div className="pt-2 border-t border-border">
                 <Button
-                  onClick={handleStartLobby}
-                  disabled={startLobby.isPending}
+                  onClick={handleForceLeave}
+                  disabled={isForceLeaving}
+                  variant="destructive"
                   className="w-full"
                 >
-                  <Play className="w-4 h-4 mr-2" />
-                  {startLobby.isPending ? "Starting..." : "Start Chess Game"}
+                  <LogOut className="w-4 h-4 mr-2" />
+                  {isForceLeaving ? "Leaving..." : "Force Leave Game"}
                 </Button>
-              )}
-            </div>
-          )}
-          
-          {lobby.status === "STARTED" && isChessGame && (
-            <div className="space-y-2">
-              {isFetchingExternalGame || !externalGameData?.hasExternalGameInstance ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Creating chess game... Please wait...</span>
-                </div>
-              ) : externalGameData.externalGameInstanceId ? (
-                <div className="text-sm text-green-500">
-                  Chess game ready! Redirecting...
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  Waiting for chess game to be created...
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Force Leave Game button - always visible */}
-          <div className="pt-2 border-t border-border">
-            <Button
-              onClick={handleForceLeave}
-              disabled={isForceLeaving}
-              variant="destructive"
-              className="w-full"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              {isForceLeaving ? "Leaving..." : "Force Leave Game"}
-            </Button>
+        {/* Chess Game Embed - Main content area */}
+        {showEmbeddedChess && externalGameData.externalGameInstanceId && (
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Chess Game</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="relative" style={{ height: 'calc(100vh - 300px)', minHeight: '600px' }}>
+                  <iframe
+                    src={`${CHESS_FRONTEND_URL}/game/${externalGameData.externalGameInstanceId}`}
+                    className="w-full h-full border-0"
+                    title="Chess Game"
+                    allow="fullscreen"
+                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+                    onLoad={() => {
+                      console.log("Chess game iframe loaded successfully:", `${CHESS_FRONTEND_URL}/game/${externalGameData.externalGameInstanceId}`)
+                    }}
+                  />
+                  <div className="absolute top-2 right-2 text-xs text-muted-foreground">
+                    <a 
+                      href={`${CHESS_FRONTEND_URL}/game/${externalGameData.externalGameInstanceId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-primary"
+                    >
+                      Open in new tab
+                    </a>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+        )}
+        
+        {/* Debug info - show what's preventing the iframe from rendering */}
+        {isChessGame && (lobby.status === "STARTED" || lobby.status === "IN_PROGRESS") && !showEmbeddedChess && (
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Debug Info</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <p><strong>Is Chess Game:</strong> {isChessGame ? 'Yes' : 'No'}</p>
+                  <p><strong>Lobby Status:</strong> {lobby.status}</p>
+                  <p><strong>Has External Game Data:</strong> {externalGameData ? 'Yes' : 'No'}</p>
+                  {externalGameData && (
+                    <>
+                      <p><strong>Has External Game Instance:</strong> {externalGameData.hasExternalGameInstance ? 'Yes' : 'No'}</p>
+                      <p><strong>External Game Instance ID:</strong> {externalGameData.externalGameInstanceId || 'null'}</p>
+                    </>
+                  )}
+                  <p><strong>Chess Frontend URL:</strong> {CHESS_FRONTEND_URL}</p>
+                  {externalGameData?.externalGameInstanceId && (
+                    <p><strong>Full URL:</strong> {`${CHESS_FRONTEND_URL}/game/${externalGameData.externalGameInstanceId}`}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
