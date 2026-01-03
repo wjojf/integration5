@@ -1,0 +1,24 @@
+### Variables
+@keycloakUrl = http://localhost:8180
+@realm = banditgames
+@clientId = platform-frontend
+
+@userToken =eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJDY3BUY1lta0F5RTI5NThkSFVPN0t4eW82UkdQSmw0RWVKbi1nbjBzUllFIn0.eyJleHAiOjE3NjY2OTQ4NTMsImlhdCI6MTc2NjY5NDU1MywianRpIjoib25ydHJvOjdlODY0Njk5LWVkYjUtNWVkMC04MjVmLTA3OGZmMzFiZDczZiIsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODE4MC9yZWFsbXMvYmFuZGl0Z2FtZXMiLCJzdWIiOiJkODNjZGEzYy03OTkyLTQ2NTYtYmVmZS0yY2I3ZWU1NmJmMDciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJwbGF0Zm9ybS1mcm9udGVuZCIsInNpZCI6IjIwNGMwMTVmLTNmZTMtNDI4ZS1hNTc2LWJhOTE1YjE3NzQ0NSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiKiJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsidXNlciJdfSwic2NvcGUiOiJlbWFpbCBwcm9maWxlIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoiVXNlciBPbmUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJ1c2VyMSIsImdpdmVuX25hbWUiOiJVc2VyIiwiZmFtaWx5X25hbWUiOiJPbmUiLCJlbWFpbCI6InVzZXIxQGJhbmRpdGdhbWVzLmNvbSJ9.f4bO2e4AR1WRxYrPI78W9pr7bbUzCiMmo2oXBvgkrsBw7uc-b9aFul3wAu4ozyuhKMx46T-5z_WiWZ8LjI6hvlgf3srnAz_1PKesizKsp1YIrRmkpSBeK5MeP61y-PldIP-P4SJYkDQbx_hh-7sChFBW7L5T6luicMJpW9YLVNb39BxDTgoHismVrXQx6R0qMCZTJ_W1_mPNZpJXtW_ee70of9wmrYyk2tI2mo7TWPWZ7FTbsHEFZu9glhL7wJs0ahoTThMxH4nH02IMhWkRRsq_1ehjG1OnEkrCvsLvU4rMDx2iRP1QQUzNjsmF72X7En8jlY8RLyfn3kyrObYj4w
+
+### ============================================
+### Keycloak Authentication
+### ============================================
+
+### Get Access Token for Admin User
+### Get Access Token
+
+POST http://localhost:8180/realms/banditgames/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=platform-frontend
+&username=user1
+&password=password
+&grant_type=password
+
+
+

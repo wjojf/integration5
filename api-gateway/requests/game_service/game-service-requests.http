@@ -1,0 +1,253 @@
+@baseUrl = http://localhost:8080/api/v1/games
+@token = eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJDY3BUY1lta0F5RTI5NThkSFVPN0t4eW82UkdQSmw0RWVKbi1nbjBzUllFIn0.eyJleHAiOjE3NjY2OTg4MzUsImlhdCI6MTc2NjY5ODUzNSwianRpIjoib25ydHJvOjQ3NWJjYWQ2LWJjYmQtZDU0Ny05ZWVhLWRiNjg4MWQwOTg4ZiIsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODE4MC9yZWFsbXMvYmFuZGl0Z2FtZXMiLCJzdWIiOiJkODNjZGEzYy03OTkyLTQ2NTYtYmVmZS0yY2I3ZWU1NmJmMDciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJwbGF0Zm9ybS1mcm9udGVuZCIsInNpZCI6IjMxYTVkNTkxLTM4ZDQtNDcxYy04MTI0LTY5ZDNmYThjNWJlZSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiKiJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsidXNlciJdfSwic2NvcGUiOiJlbWFpbCBwcm9maWxlIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoiVXNlciBPbmUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJ1c2VyMSIsImdpdmVuX25hbWUiOiJVc2VyIiwiZmFtaWx5X25hbWUiOiJPbmUiLCJlbWFpbCI6InVzZXIxQGJhbmRpdGdhbWVzLmNvbSJ9.rtvUTxBfOZaERKwBHj1vrSUZrBHbHJdckD7FFzLu26T0Kav4iG66gaiOviLi_xhHajYJ-WX9ZHgOj94-4pd2aruKB0AKyU3bW0TISclRQExwbQ1g5Wf85KQFkHLsKF2Et9QTPWuS-yQ3mhUqQdFgjRAVU4QbJ5KDmo3NBCUQ0hPvXc2zSC6TZJjJwgd94PRNFay2wOA-_wKel8qbaIV8cSyOLDgjAqFpFOyXD_rHOfaMOZdN7ydbHnMHvHqCRMoxHEAyCrWLYGzW6BuYV2ogLx9S0b-JSYZoxu-KcHeymiw8UyTUEBcZCdPm6edNaJ4mFS9Ow3OIK48kGDEarX_OCg
+
+###
+### AUTHENTICATION
+###
+
+### Get Access Token
+# @name auth
+POST http://localhost:8180/realms/banditgames/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=platform-frontend
+&username=user1
+&password=password
+&grant_type=password
+
+###
+### GAME SERVICE - GAMES MODULE
+###
+
+### 1.1 List All Available Games
+GET {{baseUrl}}/games
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### 1.2 Create New Game (Stateless)
+POST {{baseUrl}}/games/create
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "game_type": "connect_four",
+    "player_ids": ["player1", "player2"],
+    "starting_player_id": "player1",
+    "configuration": {}
+}
+
+### ============================================================
+### PART 2: STATELESS GAME OPERATIONS
+### ============================================================
+
+### 2.1 Apply Move (Stateless)
+POST {{baseUrl}}/games/move
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "game_type": "connect_four",
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0]
+        ],
+        "current_player": "player1",
+        "player_ids": ["player1", "player2"],
+        "status": "ongoing",
+        "move_number": 0
+    },
+    "move": {
+        "column": 3
+    },
+    "player_id": "player1"
+}
+
+### 2.2 Get Legal Moves
+POST {{baseUrl}}/games/legal-moves
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "game_type": "connect_four",
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0]
+        ],
+        "current_player": "player2",
+        "player_ids": ["player1", "player2"],
+        "status": "ongoing"
+    },
+    "player_id": "player2"
+}
+
+### 2.3 Evaluate Game State
+POST {{baseUrl}}/games/evaluate
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "game_type": "connect_four",
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 2, 1, 2, 0, 0],
+            [2, 0, 2, 1, 2, 0, 0]
+        ],
+        "current_player": "player1",
+        "player_ids": ["player1", "player2"]
+    }
+}
+
+### ============================================================
+### PART 3: GAME SESSIONS (Persistent)
+### ============================================================
+
+### 3.1 Create New Session
+POST {{baseUrl}}/sessions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "session_id": "session-001",
+    "game_id": "game-cf-001",
+    "game_type": "connect_four",
+    "lobby_id": "lobby-001",
+    "player_ids": ["player1", "player2"],
+    "starting_player_id": "player1",
+    "configuration": {}
+}
+
+### 3.2 Get Session Details
+GET {{baseUrl}}/sessions/session-001
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### 3.3 Apply Move to Session
+POST {{baseUrl}}/sessions/session-001/moves
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "player_id": "player1",
+    "move": {
+        "column": 3
+    }
+}
+
+### ============================================================
+### PART 4: COMPLETE GAME FLOW EXAMPLE
+### ============================================================
+
+### Step 1: Create a new session
+POST {{baseUrl}}/sessions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "session_id": "demo-session-001",
+    "game_id": "demo-game-001",
+    "game_type": "connect_four",
+    "lobby_id": "demo-lobby",
+    "player_ids": ["alice", "bob"],
+    "starting_player_id": "alice",
+    "configuration": {}
+}
+
+### Step 2: Alice plays column 3
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "player_id": "alice",
+    "move": {
+        "column": 3
+    }
+}
+
+### Step 3: Bob plays column 4
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "player_id": "bob",
+    "move": {
+        "column": 4
+    }
+}
+
+### Step 4: Alice plays column 3 again (stacking)
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "player_id": "alice",
+    "move": {
+        "column": 3
+    }
+}
+
+### Step 5: Check session status
+GET {{baseUrl}}/sessions/demo-session-001
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### ============================================================
+### PART 5: ERROR CASES & VALIDATION
+### ============================================================
+
+### 5.1 Invalid Move (Column Full)
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "player_id": "alice",
+    "move": {
+        "column": 3
+    }
+}
+
+### 5.2 Wrong Player Turn
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "player_id": "alice",
+    "move": {
+        "column": 2
+    }
+}
+
+### 5.3 Invalid Column
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "player_id": "alice",
+    "move": {
+        "column": 10
+    }
+}
+
+### 5.4 Non-existent Session
+GET {{baseUrl}}/sessions/non-existent-session
+Authorization: Bearer {{token}}
+Accept: application/json

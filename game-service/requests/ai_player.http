@@ -1,0 +1,279 @@
+### AI Player API Requests
+### Base URL: http://localhost:8000/api/v1
+### Board values: 0 = empty, 1 = player 1 (X), 2 = player 2 (AI/C)
+
+### ============================================================
+###                    DEMO SCENARIO
+### ============================================================
+### This file demonstrates:
+### 1. Multiple skill levels (LOW, MEDIUM, HIGH)
+### 2. Dynamic difficulty adjustment
+### 3. AI blocking threats
+### ============================================================
+
+### ============================================================
+### PART 1: MULTIPLE SKILL LEVELS (3 Levels)
+### ============================================================
+
+### 1.1 GET ALL AVAILABLE LEVELS
+### Shows the 3 difficulty levels with iteration counts
+
+GET http://localhost:8000/api/v1/ai-player/levels
+Accept: application/json
+
+### Expected Response:
+### {
+###   "levels": [
+###     {"level": "low", "iterations": 100},
+###     {"level": "medium", "iterations": 500},
+###     {"level": "high", "iterations": 1000}
+###   ]
+### }
+
+### ============================================================
+### 1.2 COMPARE ALL 3 LEVELS - Same Board, Different AI Strength
+### ============================================================
+
+### LOW Level (100 iterations) - Fast but weak
+POST http://localhost:8000/api/v1/ai-player/move
+Content-Type: application/json
+
+{
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 2, 2, 0, 0]
+        ],
+        "current_player": "ai_p2",
+        "player_ids": ["human_p1", "ai_p2"],
+        "status": "ongoing",
+        "move_number": 5
+    },
+    "level": "low"
+}
+
+### MEDIUM Level (500 iterations) - Balanced
+POST http://localhost:8000/api/v1/ai-player/move
+Content-Type: application/json
+
+{
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 2, 2, 0, 0]
+        ],
+        "current_player": "ai_p2",
+        "player_ids": ["human_p1", "ai_p2"],
+        "status": "ongoing",
+        "move_number": 5
+    },
+    "level": "medium"
+}
+
+### HIGH Level (1000 iterations) - Strong but slower
+POST http://localhost:8000/api/v1/ai-player/move
+Content-Type: application/json
+
+{
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 2, 2, 0, 0]
+        ],
+        "current_player": "ai_p2",
+        "player_ids": ["human_p1", "ai_p2"],
+        "status": "ongoing",
+        "move_number": 5
+    },
+    "level": "high"
+}
+
+### ============================================================
+### PART 2: DYNAMIC DIFFICULTY ADJUSTMENT
+### ============================================================
+### AI automatically adjusts based on player performance
+### - Win rate > 70% → Make AI harder
+### - Win rate < 30% → Make AI easier
+### - Win rate 30-70% → Keep same level
+### ============================================================
+
+### 2.1 Player Winning Too Much (80%) → Increase Difficulty
+### Current: LOW → Recommended: MEDIUM
+POST http://localhost:8000/api/v1/ai-player/adjust-difficulty
+Content-Type: application/json
+
+{
+    "player_win_rate": 0.80,
+    "current_level": "low"
+}
+
+### 2.2 Player Still Winning (75%) → Increase Again
+### Current: MEDIUM → Recommended: HIGH
+POST http://localhost:8000/api/v1/ai-player/adjust-difficulty
+Content-Type: application/json
+
+{
+    "player_win_rate": 0.75,
+    "current_level": "medium"
+}
+
+### 2.3 Balanced Game (50%) → Keep Same Level
+### Current: MEDIUM → Recommended: MEDIUM
+POST http://localhost:8000/api/v1/ai-player/adjust-difficulty
+Content-Type: application/json
+
+{
+    "player_win_rate": 0.50,
+    "current_level": "medium"
+}
+
+### 2.4 Player Losing Too Much (20%) → Decrease Difficulty
+### Current: HIGH → Recommended: MEDIUM
+POST http://localhost:8000/api/v1/ai-player/adjust-difficulty
+Content-Type: application/json
+
+{
+    "player_win_rate": 0.20,
+    "current_level": "high"
+}
+
+### 2.5 Player Still Losing (25%) → Decrease Again
+### Current: MEDIUM → Recommended: LOW
+POST http://localhost:8000/api/v1/ai-player/adjust-difficulty
+Content-Type: application/json
+
+{
+    "player_win_rate": 0.25,
+    "current_level": "medium"
+}
+
+### ============================================================
+### PART 3: AI INTELLIGENCE DEMO - BLOCKING THREATS
+### ============================================================
+### Shows that AI can detect and block opponent threats
+### ============================================================
+
+### 3.1 HORIZONTAL THREAT - Player 1 has 3 in a row
+### P1: columns 1,2,3 at bottom row
+### AI (P2) should block at column 0 or 4
+
+POST http://localhost:8000/api/v1/ai-player/move
+Content-Type: application/json
+
+{
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 2, 0, 0, 0],
+            [0, 0, 0, 2, 0, 0, 0],
+            [0, 1, 1, 1, 0, 0, 0]
+        ],
+        "current_player": "ai_p2",
+        "player_ids": ["human_p1", "ai_p2"],
+        "status": "ongoing",
+        "move_number": 7
+    },
+    "level": "high"
+}
+
+### Expected: move_column = 0 or 4 (blocks the threat!)
+
+### 3.2 VERTICAL THREAT - Player 1 has 3 stacked
+### P1: column 3, rows 3,4,5
+### AI (P2) should block at column 3 (on top)
+
+POST http://localhost:8000/api/v1/ai-player/move
+Content-Type: application/json
+
+{
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [2, 0, 0, 1, 0, 0, 0],
+            [2, 0, 0, 1, 0, 0, 0]
+        ],
+        "current_player": "ai_p2",
+        "player_ids": ["human_p1", "ai_p2"],
+        "status": "ongoing",
+        "move_number": 7
+    },
+    "level": "high"
+}
+
+### Expected: move_column = 3 (blocks vertical threat!)
+
+### 3.3 DIAGONAL THREAT - Player 1 has 3 diagonal
+### AI (P2) should block the diagonal
+
+POST http://localhost:8000/api/v1/ai-player/move
+Content-Type: application/json
+
+{
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 2, 0, 0, 0],
+            [0, 0, 1, 2, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0]
+        ],
+        "current_player": "ai_p2",
+        "player_ids": ["human_p1", "ai_p2"],
+        "status": "ongoing",
+        "move_number": 7
+    },
+    "level": "high"
+}
+
+### ============================================================
+### PART 4: EMPTY BOARD - FIRST MOVE
+### ============================================================
+### AI typically plays center column (3) as optimal first move
+
+POST http://localhost:8000/api/v1/ai-player/move
+Content-Type: application/json
+
+{
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0]
+        ],
+        "current_player": "ai_p2",
+        "player_ids": ["human_p1", "ai_p2"],
+        "status": "ongoing",
+        "move_number": 1
+    },
+    "level": "medium"
+}
+
+### ============================================================
+### SUMMARY
+### ============================================================
+### ✅ 3 Skill Levels: LOW (100), MEDIUM (500), HIGH (1000)
+### ✅ Dynamic Difficulty: Auto-adjusts based on win rate
+### ✅ Smart AI: Blocks horizontal, vertical, diagonal threats
+### ✅ Board Format: 0 = empty, 1 = player 1, 2 = player 2 (AI)
+### ============================================================

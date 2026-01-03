@@ -1,0 +1,59 @@
+# DVC ignore patterns
+# Files and directories to exclude from DVC tracking
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Tests
+tests/
+.pytest_cache/
+
+# Application code (not data)
+app/
+legacy_src/
+
+# Other data directories (track separately if needed)
+vector_db/
+knowledge_base/
+game_rules/
+
+

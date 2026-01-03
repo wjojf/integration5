@@ -1,0 +1,316 @@
+### Games Module API Requests
+### Base URL: http://localhost:8000/api/v1/games
+### Game engine for managing game types and sessions
+
+@baseUrl = http://localhost:8000/api/v1/games
+
+### ============================================================
+### PART 1: GAME DISCOVERY & CREATION (Stateless)
+### ============================================================
+
+### 1.1 List All Available Games
+GET {{baseUrl}}/games
+Accept: application/json
+
+### Expected Response:
+### {
+###   "games": [
+###     {
+###       "name": "Connect Four",
+###       "game_type": "connect_four",
+###       "min_players": 2,
+###       "max_players": 2,
+###       "description": "Classic connect four game"
+###     }
+###   ]
+### }
+
+###
+
+### 1.2 Create New Game (Stateless)
+POST {{baseUrl}}/games/create
+Content-Type: application/json
+
+{
+    "game_type": "connect_four",
+    "player_ids": ["player1", "player2"],
+    "starting_player_id": "player1",
+    "configuration": {}
+}
+
+### Expected Response includes:
+### - game_state: Current board state
+### - legal_moves: Available moves
+### - current_player_id: Who plays next
+### - status: "ongoing", "finished", etc.
+
+###
+
+### ============================================================
+### PART 2: STATELESS GAME OPERATIONS
+### ============================================================
+
+### 2.1 Apply Move (Stateless)
+POST {{baseUrl}}/games/move
+Content-Type: application/json
+
+{
+    "game_type": "connect_four",
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0]
+        ],
+        "current_player": "player1",
+        "player_ids": ["player1", "player2"],
+        "status": "ongoing",
+        "move_number": 0
+    },
+    "move": {
+        "column": 3
+    },
+    "player_id": "player1"
+}
+
+### Returns updated game_state after move applied
+
+###
+
+### 2.2 Get Legal Moves
+POST {{baseUrl}}/games/legal-moves
+Content-Type: application/json
+
+{
+    "game_type": "connect_four",
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0]
+        ],
+        "current_player": "player2",
+        "player_ids": ["player1", "player2"],
+        "status": "ongoing"
+    },
+    "player_id": "player2"
+}
+
+### Returns list of legal moves for the player
+
+###
+
+### 2.3 Evaluate Game State
+POST {{baseUrl}}/games/evaluate
+Content-Type: application/json
+
+{
+    "game_type": "connect_four",
+    "game_state": {
+        "board": [
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 2, 1, 2, 0, 0],
+            [2, 0, 2, 1, 2, 0, 0]
+        ],
+        "current_player": "player1",
+        "player_ids": ["player1", "player2"]
+    }
+}
+
+### Returns:
+### - status: "ongoing", "finished", "draw"
+### - winner_id: null or player_id
+### - is_finished: boolean
+### - current_player_id: who plays next
+
+###
+
+### ============================================================
+### PART 3: GAME SESSIONS (Persistent)
+### ============================================================
+
+### 3.1 Create New Session
+POST {{baseUrl}}/sessions
+Content-Type: application/json
+
+{
+    "session_id": "session-001",
+    "game_id": "game-cf-001",
+    "game_type": "connect_four",
+    "lobby_id": "lobby-001",
+    "player_ids": ["player1", "player2"],
+    "starting_player_id": "player1",
+    "configuration": {}
+}
+
+### Creates a persistent game session with automatic state management
+
+###
+
+### 3.2 Get Session Details
+GET {{baseUrl}}/sessions/session-001
+Accept: application/json
+
+### Returns:
+### - session_id, game_id, game_type
+### - current game_state
+### - status, current_player_id
+### - total_moves, winner_id
+
+###
+
+### 3.3 Apply Move to Session
+POST {{baseUrl}}/sessions/session-001/moves
+Content-Type: application/json
+
+{
+    "player_id": "player1",
+    "move": {
+        "column": 3
+    }
+}
+
+### Applies move and persists updated state
+
+###
+
+### ============================================================
+### PART 4: COMPLETE GAME FLOW EXAMPLE
+### ============================================================
+
+### Step 1: Create a new session
+POST {{baseUrl}}/sessions
+Content-Type: application/json
+
+{
+    "session_id": "demo-session-001",
+    "game_id": "demo-game-001",
+    "game_type": "connect_four",
+    "lobby_id": "demo-lobby",
+    "player_ids": ["alice", "bob"],
+    "starting_player_id": "alice",
+    "configuration": {}
+}
+
+###
+
+### Step 2: Alice plays column 3
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Content-Type: application/json
+
+{
+    "player_id": "alice",
+    "move": {
+        "column": 3
+    }
+}
+
+###
+
+### Step 3: Bob plays column 4
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Content-Type: application/json
+
+{
+    "player_id": "bob",
+    "move": {
+        "column": 4
+    }
+}
+
+###
+
+### Step 4: Alice plays column 3 again (stacking)
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Content-Type: application/json
+
+{
+    "player_id": "alice",
+    "move": {
+        "column": 3
+    }
+}
+
+###
+
+### Step 5: Check session status
+GET {{baseUrl}}/sessions/demo-session-001
+Accept: application/json
+
+###
+
+### ============================================================
+### PART 5: ERROR CASES & VALIDATION
+### ============================================================
+
+### 5.1 Invalid Move (Column Full)
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Content-Type: application/json
+
+{
+    "player_id": "alice",
+    "move": {
+        "column": 3
+    }
+}
+
+### Will fail if column 3 is full
+
+###
+
+### 5.2 Wrong Player Turn
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Content-Type: application/json
+
+{
+    "player_id": "alice",
+    "move": {
+        "column": 2
+    }
+}
+
+### Will fail if it's not Alice's turn
+
+###
+
+### 5.3 Invalid Column
+POST {{baseUrl}}/sessions/demo-session-001/moves
+Content-Type: application/json
+
+{
+    "player_id": "alice",
+    "move": {
+        "column": 10
+    }
+}
+
+### Will fail - column must be 0-6 for Connect Four
+
+###
+
+### 5.4 Non-existent Session
+GET {{baseUrl}}/sessions/non-existent-session
+Accept: application/json
+
+### Will return 404
+
+###
+
+### ============================================================
+### SUMMARY
+### ============================================================
+### ✅ Stateless Operations: Create game, apply moves, evaluate state
+### ✅ Persistent Sessions: Full game lifecycle with state management
+### ✅ Game-Agnostic API: Works with any registered game type
+### ✅ Move Validation: Legal moves, turn order, game rules
+### ✅ Event Publishing: Integrates with RabbitMQ for platform events
+### ============================================================

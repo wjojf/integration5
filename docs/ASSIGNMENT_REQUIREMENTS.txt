@@ -1,0 +1,311 @@
+﻿Integration 5
+Game platform
+  
+
+________________
+Contents
+Contents        2
+Project Overview        3
+Data & AI requirements        4
+Key Features        4
+1. Game implemented via LLM and prompt engineering        4
+2. Game State        5
+3. Gameplay Logging        5
+4. AI Modules        6
+Part 1 - AI Player        6
+Part 2a - ML Lifecycle - Dataset Generation        7
+Part 2b - ML Lifecycle - Subsystem        8
+Part 3 - AI & ML Monitoring - Model Quality Logging        8
+Part 4 - Chatbot for Platform and Game Rules        9
+5. Optional Modules        10
+Optional Bonus Part - Personalized Game Recommendations        10
+Optional Bonus Part - Generalized implementation        10
+Optional extension to existing modules:        11
+ Implement replay functionality for completed games.        11
+Non-functionals requirements        11
+Deliverables        11
+Programming requirements        13
+Key Features        13
+Finding games        13
+Lobby        13
+Friends system        13
+Achievements system        13
+Adding a new game to the platform        13
+Integrating an existing external game        13
+Authentication        14
+Technical Requirements        14
+Deliverables        15
+
+
+________________
+Project Overview  
+BanditGames is an emerging digital gaming platform dedicated to creating a vibrant, interactive space for board game enthusiasts. With a focus on innovation and user-centric experiences, the platform aims to provide a seamless environment where players can play and enjoy board games while engaging with friends and tracking their progress.
+Competing with industry leaders like BoardGameArena and Tabletopia, which offer extensive libraries of board games and social features, BanditGames seeks to differentiate itself with a blend of AI features.
+
+
+
+
+________________
+Data & AI requirements
+The AI & Data functionality of the platform is divided into several interconnected modules that together form the intelligence layer of the system.  Each module contributes to a specific aspect of intelligent behaviour or user interaction within the gaming ecosystem.
+The AI Player acts as an autonomous agent capable of participating in board games, while multiple Machine Learning Models analyse gameplay data and learn from it to identify patterns and make predictions.  A Chatbot provides a conversational interface that supports users and explains game rules and guidance for the complete platform, and an optional Recommendation System enhances engagement by suggesting suitable games based on player behavior.
+Together, these components ensure that the platform is not only data-driven but also capable of learning, adapting, and interacting intelligently with its users.
+Key Features
+1. Game implemented via LLM and prompt engineering
+The Data & A.I. components should initially be built for a simple two-player game which can be added to the platform. Start from an existing legacy implementation of TicTacToe or Connect Four written in another programming language (i.e. not Python).  Use Large Language Models (LLMs) and prompt engineering to refactor and rebuild the game in Python according to proper software engineering practices. Think about the AI integration and gameplay logging (see Gameplay Logging) and account for it during this design process. 
+Minimum Requirements
+* Use LLMs to refactor code according to software engineering standards.
+* Write unit tests to properly test the functionality of your game.
+* Apply prompt engineering techniques seen in class.
+* Maintain a Prompt Log describing prompt strategy and iterations.
+Deliverables
+* Link to original game files
+* Rebuilt Python game code
+* Prompt Log (Markdown or PDF)
+*  Unit test suite
+
+
+2. Game State
+For the development of the AI components, the team determines which game state must be tracked as a minimum and which is optional. The game state contains all the information needed to:
+1. describe the current game situation unambiguously,
+2. determine legal actions based on that situation,
+3. evaluate that state,
+4. generate the next state,
+5. … adapt according to the game in question
+You may need to refactor the game implementation to accommodate for a more rich game state implementation. Use and record new prompts to achieve this.
+What can be included in the game state?
+All observable things. So all information that a player/opponent or an AI player can see, for example:
+* Game configuration: board dimensions, board state, location of players, etc.
+* Turn information: whose turn it is, turn/move number, remaining time (if applicable).
+* Legal actions: the set of actions that are currently allowed.
+* History (optional): previous moves
+* Game status: is the game still in progress, if not, what is the outcome (win/loss/draw) and associated reward(s). How many points have already been earned, etc....
+* whatever else you deem necessary...
+Consider the serialization of the game state: a unique representation (e.g. JSON) so that the state can be saved and transmitted over the wire.
+Please note!
+TicTacToe and Connect Four don’t have any unobservable/hidden states. These are states that do exist but are not visible to opponents (e.g. hidden cards).
+
+
+3. Gameplay Logging
+The platform will collect and store detailed information about all relevant gameplay performance metrics in a database of choice (e.g. PostgreSQL). This data serves as the foundation for analytics, AI training, and player insight.
+The system logs game data (on every move), including:
+* Player ID and Game ID (unique identifiers)
+* Current game state
+* Move information
+* Timestamps
+* Heuristic game state evaluation value (utility value)
+* Everything that might be useful for later parts of the project (think ahead!)
+These performance metrics will be used for descriptive analytics, model input, and platform improvements. Think about the whole project when defining your schema, what we provide is extremely limited!
+Decisions made here are hard to revert in the middle of the project!
+Deliverables:
+* Logging system + database with schema documentation (ERD), database setup (SQL)
+Bonus
+* Implement replay functionality for completed games.
+
+
+4. AI Modules
+Part 1 - AI Player
+The AI Player acts as an autonomous game participant within the platform.  It interacts with the same endpoints used by human players and follows the official rules of the selected board game.
+Core Responsibilities
+* Make valid and strategic moves based on the current board state
+* Play autonomously against human or AI opponents
+* Generate detailed game logs that can later be used for model training (This is where the gameplay logging is used)
+* Continuously monitor decisions and outcomes through the AI & ML Model Quality Logging system (see below)
+Recommended Algorithms
+START WITH MCTS!
+* Monte Carlo Tree Search (MCTS) 
+   * You can use an existing library for this
+   * Many exist, make sure you use one that is high-quality
+Optional algorithms to try out (in addition, check with the coaches first!)
+* Minimax (with or without Alpha–Beta pruning) – for deterministic turn-based strategy
+* Heuristic or rule-based systems – for simpler AI opponents
+* Reinforcement Learning (RL) – optional, for adaptive gameplay and self-improvement
+The AI Player should support multiple concurrent agents so that several AI instances can play against each other, generating large-scale gameplay data automatically.  
+Create multiple variants (min. 3) with varying computation budgets to create agents with different skill levels.  Different agents must clearly show different skill levels. 
+
+When playing against humans:
+*  Dynamic difficulty adjustment: When a player is playing very well, switch to an agent with a higher skill level, if the player is playing badly, switch to an agent with a lower skill level
+   * This can be rule-based, but feel free to explore more advanced options
+Deliverables
+* Demonstration of AI opponent through presentation or video
+   * Multiple opponents at multiple skill levels (at least 3)
+   * Dynamic difficulty adjustment
+Part 2a - ML Lifecycle - Dataset Generation
+The second module focuses on data collection using the AI Player.
+*  Enable self-play between agents to collect game playout data.
+   * Let agents of various levels play against each other
+   * Consider adding some sort of noise or randomness to get a variety of moves
+* Log everything using your gameplay logging service. At least:
+   * Best move (according to very strong MCTS/AI configuration)
+   * The final outcome (win/loss/draw)
+   * Other relevant properties that can be useful (e.g., visit count, search depth, …). This depends on your goals.
+* After extensive collection, export a dataset to a parquet file ready for training
+   * Use DVC for dataset versioning.
+   * We expect multiple dataset versions (e.g., v1: 1k games, v2: 5k, etc.).
+The datasets should contain realistic behavior patterns: variable win/loss ratios, number of moves, skill levels, game durations
+Bonus
+* Combine DVC with MinIO for remote data storage
+Deliverables:
+* Datasets + proper DVC setup
+Part 2b - ML Lifecycle - Subsystem
+The ML subsystem will use the collected data to train predictive models that extract meaningful patterns from player performance.
+Minimum Requirements
+* Train at least two kind of models:
+   *  Policy imitation: predicts the best move to play based on the current game state.  This is an ML-based opponent similar to your AI opponent.
+   *  Win probability: predicts the chance of a player winning the game in a specific game state.  Should be able to do it from every game state during live games.
+   * Other ideas are also welcomed, please discuss with the coaches first
+* Use MLFlow for experiment tracking when developing the models
+* Evaluate and report model performance.
+* Deploy models as an API endpoints using FastAPI
+   * Can run in a local Docker container
+* Admins can view prediction results directly through the UI or export them for further analysis
+Bonus
+*  Automatic retraining pipeline triggered by new data.
+* Set up live model monitoring to track model performance while in production.
+Deliverables
+* Training notebooks or scripts
+* MLFlow demo/screenshots/ logs
+* Evaluation report with insightful discussion of model’s results 
+* Demo of deployed models with all functionality in UI through presentation or video
+Feedback Loop and Continuous Improvement
+As the AI Player continues to play games and generate new data, the ML subsystem can periodically retrain itself to improve prediction accuracy and game understanding. This creates a closed learning loop, where gameplay generates data, the data feeds into the learning model, and the learned insights can inform or refine the next generation of AI players.
+Part 3 - AI & ML Monitoring - Model Quality Logging
+AI and ML gameplay performance should be monitored through platforms such as TensorBoard or Weights & Biases (W&B) (including graphics!). This includes AI Player decisions, match outcomes, predictions, … Using the information gathered through one of these tools, compare AI player (MCTS, …)  vs. your ML model vs. a human player0
+* Visual comparison of moves made by different kinds of players
+* Showcase different playing skills of AI players depending on game state
+* Speed comparison
+*  … (be creative)
+Deliverables:
+* AI gameplay & AI contest monitoring service
+* Insightful comparative analysis
+Part 4 - Chatbot for Platform and Game Rules
+The chatbot will provide support for players and users of the platform. It should be able to explain game rules, guide users through the interface, and provide general platform assistance.
+Main Capabilities:
+* Game Rule Retrieval:
+   * Accesses a structured Game Rules and Database containing all available board games
+   * Responds to user queries (e.g., “What are the rules of Connect Four?”)
+   * Presents rules in a clear, step-by-step format
+
+   * Platform Guidance:
+   * Answers general user questions about gameplay, navigation, or account management
+   * Assists players in using the platform efficiently
+
+Technical Approach:
+      * The chatbot uses RAG (Retrieval-Augmented Generation) combined with an LLM to fetch and present the most relevant information from the knowledge base.
+      * Implement a form of caching to ensure fast responses to common questions.
+      * It communicates via a REST API and should be easily extendable with new content or integrations.
+Bonus
+      * Context-aware multi-turn conversations.
+      * Enhanced reasoning or explanation features.
+Deliverable:
+      * Working chatbot (within platform or games) through presentation or video
+      * Example conversation + brief explanation of data sources
+      5. Optional Modules
+Optional Bonus Part - Personalized Game Recommendations
+An optional Recommendation Engine can be developed to suggest new games to players based on their gameplay history and preferences using the chatbot.
+Approaches:
+      * Collaborative Filtering: Recommending games enjoyed by similar players
+      * Content-Based Filtering: Suggesting games with features similar to those already played
+      * MCP to integrate with chatbot
+Recommendation Criteria:
+      * Game genres frequently played by similar users
+      * Player’s personal performance and engagement
+      * Time spent per game and win/loss ratios
+Output:
+      * Personalized recommendations presented directly in the user interface to improve engagement and satisfaction.
+
+Optional Bonus Part - Generalized implementation
+Try to generalize your implementation in order to create a generic framework that can used for multiple games. This requires some serious software engineering skills, since this requires you to make all components (telemetry logging+AI opponent + data generation + ML Lifecycle) interchangeable.
+Please note!
+We ask that you do not choose any new games that have unobservable/hidden states. 
+Optional extension to existing modules:
+         * Implement replay functionality for completed games.
+         * Combine DVC with MinIO for remote data storage
+         * Automatic ML retraining pipeline triggered by new data.
+         * Set up live ML model monitoring to track model performance while in production.
+         * Chatbot: Context-aware multi-turn conversations.
+         * Chatbot: Enhanced reasoning or explanation features
+
+
+Non-functionals requirements
+         * All AI modules — the Chatbot, AI Player, Machine Learning Model, and optionally the Recommendation System — must expose their functionality through REST APIs. Their results should be accessible within the main application’s user interface, allowing end users to interact seamlessly with the AI services.
+         * Ship your AI-solutions as one or more self-contained Docker Container(s)
+Deliverables
+
+
+Game implementation
+         * Link to original game files
+         * Rebuilt Python game code
+         * Prompt Log (Markdown or PDF)
+         *  Unit test suite
+AI Gameplay
+         * Demonstration of AI opponent through presentation or video
+         * Multiple opponents at multiple skill levels
+         * Dynamic difficulty adjustment
+ML Lifecycle 
+         * Logging system + database with schema documentation (ERD), database setup (SQL)
+         * Dataset export functionality
+         * Datasets + proper DVC setup
+         * Training notebooks or scripts
+         * MLFlow demo/screenshots/ logs
+         * Evaluation report with insightful discussion of model’s results 
+         * Demo of deployed models with all functionality in UI through presentation or video
+AI & ML Model quality logging
+         * AI gameplay & AI contest monitoring service
+         * Insightful comparative analysis
+Chatbot
+         * Working chatbot (within platform or games) through presentation or video
+         * Example conversation + brief explanation of data sources
+
+
+________________
+Programming requirements
+Key Features        
+Some of the platform's features—such as a chatbot interface—can be derived from the above Data & AI requirements. They are not repeated in this section.
+Finding games
+A player can look up games and pick a game to mark as a favourite.
+Optional: integrate with a pay provider like Mollie or Stripe to allow buying of games.
+Lobby
+To start an actual game, players are matched in a lobby. Once a matching player has been found, the game can be started. 
+Friends system
+Players can look up and mark other players on the platform as friends.  A player can invite a friend to play a game and (optionally) compare stats.
+Achievements system
+Each game defines its own achievements and communicates these to the platform when registering itself with the platform. The platform can display how many achievements have been unlocked (for a specific game). On the game page in the platform a player can see which achievements have been unlocked. The achievements that haven’t yet been unlocked can also be shown, as well as how the player can unlock them.
+Adding a new game to the platform
+It must be as easy as possible to add a new game to the system. This process should be thoroughly documented to support game developers.
+All communication (apart from registering the game) between the game and the platform is done asynchronously using a message queue.
+Integrating an existing external game
+In addition to the Python game you build (see Data & AI section above), an existing external game will be provided and must be seamlessly integrated.. This game has no knowledge of how your game platform communicates, so you are expected to apply a context mapping technique known as the “Anti-Corruption Layer” (ACL). Essentially this means that our game will publish events and your ACL will transform these events into something your platform knows about. See diagram below:
+
+
+  
+
+
+
+In the diagram the external game is “Subsystem B” and your game platform is “Subsystem A”. You see there is no direct communication between the two, everything goes through the ACL and your game platform has no knowledge of the events the external game publishes.
+
+
+The details of the external game and which events it publishes will be provided at a later date.
+Authentication
+The platform and all its games are secured with a Single Sign On (SSO) policy. This means once you’ve logged in to the platform and are redirected to a specific game, you shouldn’t have to log on again.
+Technical Requirements        
+         * The platform is built using
+         * Spring boot 
+         * React
+         * Keycloak
+         * RabbitMQ
+         * PostgreSQL
+
+
+         * The principles and concepts introduced in Programming 6 are applied.
+         * Sensible integration tests are provided for the platform's API.
+
+
+Deliverables
+         * Gitlab repos containing all produced code.
+         * Deployment pipelines for all components so that they can be deployed by the click of a button.  Introducing basic quality gates is mandatory. We will use Gitlab for this.  A small workshop will be organized in order to give you a headstart.
+
+
+
+
+         * A document that describes how a new game should be integrated with the platform. This should describe the technical process and an example on the configuration required to achieve this. Optionally, you can develop a Platform SDK which can be included as a dependency in the codebase of a game, which registers the game with the platform automatically (given some configuration properties of course). If you choose to develop the Platform SDK the document describing the integration of a new game will of course be shorter as the integration should be a lot more straightforward.

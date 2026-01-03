@@ -1,0 +1,85 @@
+### Global Variables
+@baseUrl = http://localhost:8080/api/platform
+@userToken = eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJDY3BUY1lta0F5RTI5NThkSFVPN0t4eW82UkdQSmw0RWVKbi1nbjBzUllFIn0.eyJleHAiOjE3NjY2OTg1NjYsImlhdCI6MTc2NjY5ODI2NiwianRpIjoib25ydHJvOjMzMWJiMTk0LWY1ZmUtZTVlMS1kMjY3LWU2ODZkZWY3YmZhZSIsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODE4MC9yZWFsbXMvYmFuZGl0Z2FtZXMiLCJzdWIiOiJkODNjZGEzYy03OTkyLTQ2NTYtYmVmZS0yY2I3ZWU1NmJmMDciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJwbGF0Zm9ybS1mcm9udGVuZCIsInNpZCI6IjY4Yzk4Y2I4LWZiNjItNGNkZC05YTY3LTA3MWIyN2JjMDFiZSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiKiJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsidXNlciJdfSwic2NvcGUiOiJlbWFpbCBwcm9maWxlIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoiVXNlciBPbmUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJ1c2VyMSIsImdpdmVuX25hbWUiOiJVc2VyIiwiZmFtaWx5X25hbWUiOiJPbmUiLCJlbWFpbCI6InVzZXIxQGJhbmRpdGdhbWVzLmNvbSJ9.PZfIOR5CiAutzS59OL_UiOGSqn6TnawP6J9XvWNsOLxEISN_7WdmDHABWJERC4OdhdDr1I0azDdUVdzLzB6JfoYT1vDRDQUxyT1wc8XqBOrS2lL-8ec9eOzS3g_P5pOZ7Qo0t8oeNw5eswH2ozIKbMbdbLyfr8ghqAuMUCRWEMtBM9yEaF3mIkXRVKN6Oo33_f4Irc2aZHEKB01IMTq298Xqg6YARJH4yhbXm6gEPxvrQoKHIJDmn1ztZmI3I8MxaZCAsID0VVtCb8iJPZqYr9UCikAXPgJANOa5gKJ2Lc4Li67-mTB9Dhfv7hHNhLsiKn7toXXOlGV4jp-UeVemyg
+###
+### AUTHENTICATION
+###
+
+### Get Access Token
+# @name auth
+POST http://localhost:8180/realms/banditgames/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=platform-frontend
+&username=user1
+&password=password
+&grant_type=password
+
+###
+### PLAYERS DOMAIN API
+###
+
+### Get Authenticated Player's Profile (Me)
+GET {{baseUrl}}/players
+Authorization: Bearer {{userToken}}
+
+### Get Player By ID (Public Profile)
+# Replace {playerId} with a real UUID from the response above
+GET {{baseUrl}}/players/d83cda3c-7992-4656-befe-2cb7ee56bf07
+Authorization: Bearer {{userToken}}
+
+### Update Authenticated Player's Profile
+PATCH {{baseUrl}}/players
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "username": "newUsername",
+  "bio": "This is my updated bio. I love playing games!",
+  "address": "123 Game Street, Player City"
+}
+
+### Update Player - Username Only
+PATCH {{baseUrl}}/players
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "username": "coolGamer123"
+}
+
+### Update Player - With Game Preferences
+PATCH {{baseUrl}}/players
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "username": "proPlayer",
+  "bio": "Professional gamer",
+  "gamePreferences": [
+    "550e8400-e29b-41d4-a716-446655440001",
+    "550e8400-e29b-41d4-a716-446655440002"
+  ]
+}
+
+### Search Players - By Username
+GET {{baseUrl}}/players/search?username=user
+Authorization: Bearer {{userToken}}
+
+### Search Players - By Rank
+# Valid ranks: BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
+GET {{baseUrl}}/players/search?rank=GOLD
+Authorization: Bearer {{userToken}}
+
+### Search Players - By Username and Rank
+GET {{baseUrl}}/players/search?username=pro&rank=PLATINUM
+Authorization: Bearer {{userToken}}
+
+### Search Players - All Players
+GET {{baseUrl}}/players/search
+Authorization: Bearer {{userToken}}
+
+### Delete Authenticated Player's Profile
+# WARNING: This action is irreversible!
+DELETE {{baseUrl}}/players
+Authorization: Bearer {{userToken}}

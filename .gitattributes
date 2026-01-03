@@ -1,0 +1,38 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source files
+*.java text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.properties text eol=lf
+*.gradle text eol=lf
+*.sh text eol=lf
+
+# Binary files
+*.jar binary
+*.war binary
+*.ear binary
+*.class binary
+*.so binary
+*.dll binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+
+# Gradle wrapper
+gradle-wrapper.jar binary
+
+# Python
+*.pyc binary
+*.pyo binary
+*.pyd binary
+*.egg binary
+*.whl binary

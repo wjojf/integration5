@@ -1,0 +1,108 @@
+### Variables
+@baseUrl = http://localhost:8081
+@userToken =eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJDY3BUY1lta0F5RTI5NThkSFVPN0t4eW82UkdQSmw0RWVKbi1nbjBzUllFIn0.eyJleHAiOjE3NjY2OTQ4NTMsImlhdCI6MTc2NjY5NDU1MywianRpIjoib25ydHJvOjdlODY0Njk5LWVkYjUtNWVkMC04MjVmLTA3OGZmMzFiZDczZiIsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODE4MC9yZWFsbXMvYmFuZGl0Z2FtZXMiLCJzdWIiOiJkODNjZGEzYy03OTkyLTQ2NTYtYmVmZS0yY2I3ZWU1NmJmMDciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJwbGF0Zm9ybS1mcm9udGVuZCIsInNpZCI6IjIwNGMwMTVmLTNmZTMtNDI4ZS1hNTc2LWJhOTE1YjE3NzQ0NSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiKiJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsidXNlciJdfSwic2NvcGUiOiJlbWFpbCBwcm9maWxlIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoiVXNlciBPbmUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJ1c2VyMSIsImdpdmVuX25hbWUiOiJVc2VyIiwiZmFtaWx5X25hbWUiOiJPbmUiLCJlbWFpbCI6InVzZXIxQGJhbmRpdGdhbWVzLmNvbSJ9.f4bO2e4AR1WRxYrPI78W9pr7bbUzCiMmo2oXBvgkrsBw7uc-b9aFul3wAu4ozyuhKMx46T-5z_WiWZ8LjI6hvlgf3srnAz_1PKesizKsp1YIrRmkpSBeK5MeP61y-PldIP-P4SJYkDQbx_hh-7sChFBW7L5T6luicMJpW9YLVNb39BxDTgoHismVrXQx6R0qMCZTJ_W1_mPNZpJXtW_ee70of9wmrYyk2tI2mo7TWPWZ7FTbsHEFZu9glhL7wJs0ahoTThMxH4nH02IMhWkRRsq_1ehjG1OnEkrCvsLvU4rMDx2iRP1QQUzNjsmF72X7En8jlY8RLyfn3kyrObYj4w
+
+### ============================================
+### PLAYERS DOMAIN
+### Base Path: /api/players
+### Security: Requires Bearer Token
+### ============================================
+
+### Get Authenticated Player's Profile
+# GET /api/players
+# Returns the profile of the currently authenticated player
+GET {{baseUrl}}/api/players
+Authorization: Bearer {{userToken}}
+
+###
+
+### Get Player By ID (Public Profile)
+# GET /api/players/{playerId}
+# Returns public profile information for a specific player
+# Replace {playerId} with actual UUID
+GET {{baseUrl}}/api/players/550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer {{userToken}}
+
+###
+
+### Update Authenticated Player's Profile
+# PATCH /api/players
+# Updates the profile of the currently authenticated player
+PATCH {{baseUrl}}/api/players
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "username": "newUsername",
+  "bio": "This is my updated bio. I love playing games!",
+  "address": "123 Game Street, Player City"
+}
+
+###
+
+### Update Player - Username Only
+PATCH {{baseUrl}}/api/players
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "username": "coolGamer123"
+}
+
+###
+
+### Update Player - With Game Preferences
+PATCH {{baseUrl}}/api/players
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "username": "proPlayer",
+  "bio": "Professional gamer",
+  "gamePreferences": [
+    "550e8400-e29b-41d4-a716-446655440001",
+    "550e8400-e29b-41d4-a716-446655440002"
+  ]
+}
+
+###
+
+### Search Players - By Username
+# GET /api/players/search?username={username}
+# Search for players by username (partial match)
+GET {{baseUrl}}/api/players/search?username=user
+Authorization: Bearer {{userToken}}
+
+###
+
+### Search Players - By Rank
+# GET /api/players/search?rank={rank}
+# Search for players by rank
+# Valid ranks: BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
+GET {{baseUrl}}/api/players/search?rank=GOLD
+Authorization: Bearer {{userToken}}
+
+###
+
+### Search Players - By Username and Rank
+# GET /api/players/search?username={username}&rank={rank}
+# Search for players by both username and rank
+GET {{baseUrl}}/api/players/search?username=pro&rank=PLATINUM
+Authorization: Bearer {{userToken}}
+
+###
+
+### Search Players - All Players
+# GET /api/players/search
+# Get all players (no filters)
+GET {{baseUrl}}/api/players/search
+Authorization: Bearer {{userToken}}
+
+###
+
+### Delete Authenticated Player's Profile
+# DELETE /api/players
+# Deletes the profile of the currently authenticated player
+# WARNING: This action is irreversible!
+DELETE {{baseUrl}}/api/players
+Authorization: Bearer {{userToken}}

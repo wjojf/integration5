@@ -1,0 +1,90 @@
+### ML Models API Tests
+### Use with VS Code REST Client extension
+
+@baseUrl = http://localhost:8000/api/v1/ml-models
+
+### ============== Health & Status ==============
+
+### Health Check
+GET {{baseUrl}}/health
+
+### Get Model Status
+GET {{baseUrl}}/status
+
+### ============== Training ==============
+
+### Train Policy Model
+POST {{baseUrl}}/train/policy
+Content-Type: application/json
+
+{
+    "dataset_path": "/app/data/datasets/v1/game_logs_v1_latest.parquet"
+}
+
+### Train Win Probability Model
+POST {{baseUrl}}/train/winprob
+Content-Type: application/json
+
+{
+    "dataset_path": "/app/data/datasets/v1/game_logs_v1_20251215_164025.parquet"
+}
+
+### Train Both Models
+POST {{baseUrl}}/train/all
+Content-Type: application/json
+
+{
+    "dataset_path": "/app/data/datasets/v1/game_logs_v1_20251215_164025.parquet"
+}
+
+### ============== Load Models ==============
+
+### Load Saved Models
+POST {{baseUrl}}/load
+
+### ============== Predictions ==============
+
+### Predict Best Move (Empty Board)
+POST {{baseUrl}}/predict/move
+Content-Type: application/json
+
+{
+    "board_state": "[[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]]",
+    "player": 1
+}
+
+### Predict Best Move (Mid-game)
+POST {{baseUrl}}/predict/move
+Content-Type: application/json
+
+{
+    "board_state": "[[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,2,0,0,0],[0,0,1,1,2,0,0]]",
+    "player": 1
+}
+
+### Predict Win Probability (Empty Board)
+POST {{baseUrl}}/predict/winprob
+Content-Type: application/json
+
+{
+    "board_state": "[[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]]",
+    "player": 1
+}
+
+### Predict Win Probability (Mid-game)
+POST {{baseUrl}}/predict/winprob
+Content-Type: application/json
+
+{
+    "board_state": "[[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,2,0,0,0],[0,0,1,1,2,0,0]]",
+    "player": 1
+}
+
+### Get All Predictions (Move + Win Probability)
+POST {{baseUrl}}/predict/all
+Content-Type: application/json
+
+{
+    "board_state": "[[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,2,0,0,0],[0,0,1,1,2,0,0]]",
+    "player": 1
+}

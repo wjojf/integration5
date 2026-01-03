@@ -1,0 +1,254 @@
+body.login-pf,
+.login-pf-page {
+    background: radial-gradient(circle at top, #11182a 0, #050816 45%, #020617 100%);
+    color: #e5e9f5;
+}
+
+.login-pf-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+#kc-content-wrapper {
+    display: grid;
+    grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+    gap: 2rem;
+    align-items: stretch;
+}
+
+.card-pf,
+#kc-content {
+    max-width: 420px;
+    width: 100%;
+    background: #0b1020;
+    border-radius: 0.75rem;
+    border: 1px solid #1a2238;
+    box-shadow: 0 12px 24px rgba(2, 6, 23, 0.8);
+    padding: 1.5rem;
+}
+
+#kc-header {
+    margin-bottom: 1.5rem;
+}
+
+#kc-header-wrapper {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+#kc-page-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.8rem;
+}
+
+#kc-form-wrapper form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.control-label,
+.login-pf-page .form-group label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9aa4c6;
+    margin-bottom: 0.25rem;
+}
+
+.login-pf-page .form-control,
+#username,
+#password,
+#password-confirm,
+#email,
+#firstName,
+#lastName {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid #1a2238;
+    background: #050b18;
+    color: #e5e9f5;
+    transition:
+            border-color 150ms ease-out,
+            box-shadow 150ms ease-out,
+            background-color 150ms ease-out;
+}
+
+.pf-v5-c-form-control:after, .pf-v5-c-form-control:before {
+    border-block-end: none;
+    border-radius: 0.75rem;
+}
+
+.pf-v5-c-button.pf-m-control {
+    --pf-v5-c-button--after--BorderColor: transparent;
+    --pf-v5-c-button--BorderRadius: 0.75rem;
+}
+
+.login-pf-page .form-control::placeholder {
+    color: #9aa4c6;
+}
+
+.login-pf-page .form-control:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.12);
+}
+
+.pf-c-input-group {
+    border-radius: 0.5rem;
+    border: 1px solid #1a2238;
+    overflow: hidden;
+    background: #050b18;
+}
+
+.pf-v5-c-form-control{
+    --pf-v5-c-form-control--BackgroundColor: transparent;
+    --pf-v5-c-button--m-control--BackgroundColor: none;
+
+}
+
+.pf-v5-c-login {
+    --pf-v5-c-login__main-footer-band--BorderTopColor: none;
+}
+
+.pf-c-input-group .pf-c-form-control {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+}
+
+.pf-c-input-group .pf-c-button {
+    border: none;
+    border-left: 1px solid #1a2238;
+    background: #11182a;
+    color: #9aa4c6;
+    padding: 0 0.9rem;
+}
+
+.pf-c-input-group .pf-c-button:hover {
+    background: #050b18;
+}
+
+.pf-c-button.pf-m-primary,
+.btn.btn-primary,
+#kc-login,
+#kc-register,
+#kc-reset-password {
+    width: 100%;
+    border-radius: 999px;
+    border: 0 solid transparent;
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    color: #f9fafb;
+    font-weight: 600;
+    padding: 0.7rem 1rem;
+    margin-top: 0.8rem;
+    cursor: pointer;
+    transition:
+            transform 150ms ease-out,
+            box-shadow 150ms ease-out,
+            background 150ms ease-out;
+}
+
+#kc-login:after {
+    border: 0 solid transparent;
+}
+
+.pf-v5-c-form__group {
+    border: 0 solid transparent;
+}
+
+.pf-c-button.pf-m-primary:hover,
+.btn.btn-primary:hover,
+#kc-login:hover,
+#kc-register:hover,
+#kc-reset-password:hover {
+    background: #60a5fa;
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.7);
+    transform: translateY(-1px);
+}
+
+#kc-form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.8rem;
+    font-size: 0.8rem;
+    color: #9aa4c6;
+}
+
+#kc-registration,
+#kc-info {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #9aa4c6;
+}
+
+#kc-form-options a,
+#kc-registration a,
+#kc-info a {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+#kc-form-options a:hover,
+#kc-registration a:hover,
+#kc-info a:hover {
+    text-decoration: underline;
+}
+
+.alert,
+#kc-error-message {
+    border-radius: 0.5rem;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    background: rgba(127, 29, 29, 0.35);
+    color: #e5e9f5;
+    padding: 0.8rem;
+    font-size: 0.9rem;
+    margin-bottom: 0.8rem;
+}
+
+#kc-info-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-left: 1.5rem;
+    color: #9aa4c6;
+}
+
+#kc-header-wrapper::before {
+    content: "";
+    display: block;
+    width: 100%;
+    max-width: 160px;
+    height: 160px;
+    margin-bottom: 1.5rem;
+    border-radius: 0.75rem;
+    background: url("../img/icon.png") center/contain no-repeat;
+    box-shadow: 0 12px 24px rgba(2, 6, 23, 0.8);
+}
+
+#kc-info {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+    #kc-content-wrapper {
+        display: block;
+    }
+
+    .login-pf-page {
+        padding: 1.5rem 1rem;
+    }
+
+    .card-pf,
+    #kc-content {
+        padding: 1.5rem;
+    }
+}

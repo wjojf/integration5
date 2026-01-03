@@ -1,0 +1,76 @@
+### Variables
+@baseUrl = http://localhost:8081
+
+### ============================================
+### CHAT DOMAIN
+### Base Path: /api/chat
+### Security: Requires Bearer Token
+### ============================================
+
+### Send a Message
+# POST /api/chat/messages
+# Send a message to another user
+POST {{baseUrl}}/api/chat/messages
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "receiverId": "550e8400-e29b-41d4-a716-446655440001",
+  "content": "Hello! How are you doing?"
+}
+
+###
+
+### Send Message - Long Content
+POST {{baseUrl}}/api/chat/messages
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "receiverId": "550e8400-e29b-41d4-a716-446655440001",
+  "content": "This is a longer message. I wanted to discuss our strategy for the next game. We should focus on early game positioning and try to control the center. What do you think about this approach?"
+}
+
+###
+
+### Get Conversation with User - First Page
+# GET /api/chat/conversations/{userId}
+# Get paginated conversation history with a specific user
+# Default: page=0, size=20
+GET {{baseUrl}}/api/chat/conversations/550e8400-e29b-41d4-a716-446655440001
+Authorization: Bearer {{userToken}}
+
+###
+
+### Get Conversation - Custom Pagination
+# GET /api/chat/conversations/{userId}?page={page}&size={size}
+# Get conversation with custom page and size
+# Maximum size: 50
+GET {{baseUrl}}/api/chat/conversations/550e8400-e29b-41d4-a716-446655440001?page=0&size=10
+Authorization: Bearer {{userToken}}
+
+###
+
+### Get Conversation - Second Page
+GET {{baseUrl}}/api/chat/conversations/550e8400-e29b-41d4-a716-446655440001?page=1&size=20
+Authorization: Bearer {{userToken}}
+
+###
+
+### Get Conversation - Maximum Page Size
+GET {{baseUrl}}/api/chat/conversations/550e8400-e29b-41d4-a716-446655440001?page=0&size=50
+Authorization: Bearer {{userToken}}
+
+###
+
+### Get All Conversation Partners
+# GET /api/chat/conversations
+# Get list of all users you have conversations with
+GET {{baseUrl}}/api/chat/conversations
+Authorization: Bearer {{userToken}}
+
+###
+
+### Get All Conversation Partners - Admin
+GET {{baseUrl}}/api/chat/conversations
+Authorization: Bearer {{adminToken}}

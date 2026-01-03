@@ -1,0 +1,137 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: banditgames-postgres
+    environment:
+      POSTGRES_DB: banditgames
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - banditgames-backend
+      - banditgames-shared-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: banditgames-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - banditgames-backend
+    restart: unless-stopped
+
+  messaging:
+    image: rabbitmq:latest
+    container_name: banditgames-rabbit
+    ports:
+      - '5672:5672'
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    networks:
+      - banditgames-backend
+      - banditgames-shared-network
+
+  platform-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: banditgames-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/banditgames
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/banditgames
+      KEYCLOAK_JWK_SET_URI: http://idp_keycloak:8080/realms/banditgames/protocol/openid-connect/certs
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      idp_keycloak:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - banditgames-backend
+      - banditgames-keycloak
+
+  idp_mysql:
+    image: mysql:9.0.1
+    command: ["mysqld", "--lower_case_table_names=1", "--sql_generate_invisible_primary_key=OFF"]
+    container_name: banditgames-keycloak-mysql
+    volumes:
+      - idp_mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 'root'
+      MYSQL_DATABASE: 'keycloak'
+      MYSQL_USER: 'keycloak'
+      MYSQL_PASSWORD: 'password'
+    ports:
+      - '3307:3306'
+    networks:
+      - banditgames-keycloak
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  idp_keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    container_name: banditgames-keycloak
+    environment:
+      KEYCLOAK_ADMIN: 'admin'
+      KEYCLOAK_ADMIN_PASSWORD: 'admin'
+      KC_DB: 'mysql'
+      KC_DB_URL_HOST: 'idp_mysql'
+      KC_DB_URL_DATABASE: 'keycloak'
+      KC_DB_USERNAME: 'keycloak'
+      KC_DB_PASSWORD: 'password'
+    command: start-dev --import-realm
+    ports:
+      - "8180:8080"
+    depends_on:
+      idp_mysql:
+        condition: service_healthy
+    networks:
+      - banditgames-keycloak
+    volumes:
+      - ./keycloak/keycloak-themes:/opt/keycloak/themes/banditgames-themes
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/banditgames.json
+
+volumes:
+  postgres_data:
+  idp_mysql_data:
+  redis_data:
+
+
+networks:
+  banditgames-keycloak:
+    name: banditgames-keycloak-network
+    driver: bridge
+  banditgames-backend:
+    name: banditgames-backend-network
+    driver: bridge
+  banditgames-shared-network:
+    name: banditgames-shared-network
+    external: true

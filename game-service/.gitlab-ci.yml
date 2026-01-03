@@ -1,0 +1,39 @@
+stages:
+  - check
+  - build
+
+# Simple health check: Is code available? Is Python working?
+health-check:
+  stage: check
+  tags:
+    - local
+  script:
+    - echo "Checking if Python is available..."
+    - python --version
+    - echo "Checking if project files exist..."
+    - dir app
+    - echo "Health check passed!"
+  allow_failure: false
+
+# Build Docker image and push to GitLab Container Registry
+build-and-push-docker:
+  stage: build
+  tags:
+    - local
+  script:
+    - echo "Building Docker image..."
+    - $imageName = $env:CI_REGISTRY_IMAGE
+    - $commitSha = $env:CI_COMMIT_SHA
+    - docker build -t "${imageName}:latest" .
+    - docker tag "${imageName}:latest" "${imageName}:${commitSha}"
+    - echo "Docker image built successfully!"
+    - echo "Logging in to GitLab Container Registry..."
+    - $registryUser = $env:CI_REGISTRY_USER
+    - $registryPass = $env:CI_REGISTRY_PASSWORD
+    - $registry = $env:CI_REGISTRY
+    - docker login -u $registryUser -p $registryPass $registry
+    - echo "Pushing image to registry..."
+    - docker push "${imageName}:latest"
+    - docker push "${imageName}:${commitSha}"
+    - echo "Docker image pushed successfully to GitLab Container Registry!"
+  allow_failure: false

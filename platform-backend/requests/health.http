@@ -1,0 +1,23 @@
+### Variables
+@baseUrl = http://localhost:8081
+
+### ============================================
+### HEALTH & ACTUATOR ENDPOINTS
+### Base Path: /actuator
+### Security: None (public endpoints)
+### ============================================
+
+### Health Check
+# GET /actuator/health
+# Check if the application is running and healthy
+GET {{baseUrl}}/actuator/health
+
+###
+
+### Health Check - Detailed (if enabled)
+GET {{baseUrl}}/actuator/health/liveness
+
+###
+
+### Readiness Check
+GET {{baseUrl}}/actuator/health/readiness

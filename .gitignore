@@ -1,0 +1,139 @@
+# BanditGames Platform - Root .gitignore
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.iml
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+
+# Build artifacts
+target/
+build/
+dist/
+out/
+bin/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# Java
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+.gradle/
+build/
+
+# Node (if any frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Data files
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
+data/
+datasets/
+
+# ML/AI artifacts
+models/
+checkpoints/
+wandb/
+mlruns/
+*.pkl
+*.h5
+*.pt
+*.pth
+
+# Vector databases
+vector_db/
+chroma_db/
+
+# DVC
+.dvc/cache/
+.dvc/tmp/
+
+# Coverage reports
+coverage/
+.nyc_output/
+*.lcov
+
+# Test results
+.pytest_cache/
+.hypothesis/
+.tox/
+test-results/
+
+# Secrets and keys
+*.pem
+*.key
+*.cert
+secrets/
+.secrets/
+
+# GitLab CI/CD artifacts (keep .gitlab-ci.yml)
+.gitlab-ci-local/
+
+# Documentation builds
+site/
+_site/
+docs/_build/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local development
+local/
+dev/
+tmp/
+temp/
+
+# Nested git repositories (monorepo - we use root git)
+# Ignore nested .git directories to create unified monorepo
+**/.git/

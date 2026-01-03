@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Docker-specific overrides (Service names instead of localhost)
+      - REDIS_HOST=redis
+      # Game service URL must be overridden to point to host machine or other container
+      # Use host.docker.internal for Mac/Windows to access services on host
+      - GAME_SERVICE_URL=http://host.docker.internal:8000
+      - PLATFORM_BACKEND_URL=http://host.docker.internal:8081
+      - KEYCLOAK_ISSUER_URI=http://host.docker.internal:8180/realms/banditgames
+      - KEYCLOAK_JWK_SET_URI=http://host.docker.internal:8180/realms/banditgames/protocol/openid-connect/certs
+    depends_on:
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Allow access to host for game-service
+
+  # Redis for Rate Limiting
+  redis:
+    image: redis:alpine
+    container_name: bandit-redis
+    ports:
+      - "6380:6379"
+
+# Default network

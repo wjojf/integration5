@@ -1,0 +1,36 @@
+### Variables
+@baseUrl = http://localhost:8081
+
+### ============================================
+### DIRECT BACKEND TESTING (No Gateway)
+### Manually adding gateway headers for testing
+### ============================================
+
+### Get Authenticated Player's Profile
+# Simulating gateway headers
+GET {{baseUrl}}/api/players
+X-User-Id: d83cda3c-7992-4656-befe-2cb7ee56bf07
+X-Username: user1
+X-User-Email: user1@banditgames.com
+
+###
+
+### Update Player Profile
+PATCH {{baseUrl}}/api/players
+X-User-Id: d83cda3c-7992-4656-befe-2cb7ee56bf07
+X-Username: user1
+X-User-Email: user1@banditgames.com
+Content-Type: application/json
+
+{
+  "username": "testUser",
+  "bio": "Testing direct backend"
+}
+
+###
+
+### Search Players
+GET {{baseUrl}}/api/players/search?username=user
+X-User-Id: d83cda3c-7992-4656-befe-2cb7ee56bf07
+X-Username: user1
+X-User-Email: user1@banditgames.com

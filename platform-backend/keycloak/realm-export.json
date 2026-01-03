@@ -1,0 +1,468 @@
+{
+    "realm": "banditgames",
+    "enabled": true,
+    "registrationAllowed": true,
+    "resetPasswordAllowed": true,
+    "loginTheme": "banditgames-themes",
+    "users": [
+    {
+        "id": "0b6d9d5a-5d12-4a6f-8c40-9b79e7bb2df2",
+        "username": "user1",
+        "enabled": true,
+        "email": "user1@banditgames.com",
+        "firstName": "User",
+        "lastName": "One",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "0b6d9d5a-5d12-4a6f-8c40-9b79e7bb2df1",
+        "username": "admin",
+        "enabled": true,
+        "email": "admin@banditgames.com",
+        "firstName": "Rob",
+        "lastName": "Admin",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "0b6d9d5a-5d12-4a6f-8c40-9b79e7bb2df3",
+        "username": "bandit_ace",
+        "enabled": true,
+        "email": "bandit_ace@example.com",
+        "firstName": "Bandit",
+        "lastName": "Ace",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "2c8a7d11-4d5d-4e8f-9c79-2e7e63c3f0a2",
+        "username": "no_scope_nina",
+        "enabled": true,
+        "email": "no_scope_nina@example.com",
+        "firstName": "No",
+        "lastName": "Scope Nina",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "7f2c3f9a-1e3c-4c59-9d61-3b2a5c7d88a1",
+        "username": "lootlin22",
+        "enabled": true,
+        "email": "lootlin22@example.com",
+        "firstName": "Lootlin",
+        "lastName": "Twenty Two",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "a3c2f771-0b7a-4a4f-bf1c-1c61c4d7e0d4",
+        "username": "player_one",
+        "enabled": true,
+        "email": "player_one@example.com",
+        "firstName": "Player",
+        "lastName": "One",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "c9b7ab66-9b53-4c2d-9d6a-11a9f617fdf3",
+        "username": "tiltproof_tom",
+        "enabled": true,
+        "email": "tiltproof_tom@example.com",
+        "firstName": "Tiltproof",
+        "lastName": "Tom",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "d7f6b94a-9d5b-49b1-86b3-2d2e1a3c4b5c",
+        "username": "indie_ivy",
+        "enabled": true,
+        "email": "indie_ivy@example.com",
+        "firstName": "Indie",
+        "lastName": "Ivy",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "e2b1c0d9-3f8d-4f35-bc4c-3f6b7a8d9c10",
+        "username": "clip_chris",
+        "enabled": true,
+        "email": "clip_chris@example.com",
+        "firstName": "Clip",
+        "lastName": "Chris",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "f1a2b3c4-d5e6-4f70-8123-4567890abcde",
+        "username": "builder_bea",
+        "enabled": true,
+        "email": "builder_bea@example.com",
+        "firstName": "Builder",
+        "lastName": "Bea",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "13579bdf-2468-4ace-9bdf-13579bdf2468",
+        "username": "speedy_sam",
+        "enabled": true,
+        "email": "speedy_sam@example.com",
+        "firstName": "Speedy",
+        "lastName": "Sam",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "02468ace-1357-4bdf-8ace-02468ace1357",
+        "username": "zen_zara",
+        "enabled": true,
+        "email": "zen_zara@example.com",
+        "firstName": "Zen",
+        "lastName": "Zara",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "9d2f7c1a-3a4b-4d6e-8f10-11a1b2c3d4e5",
+        "username": "bandit_ace_2",
+        "enabled": true,
+        "email": "bandit_ace_2@example.com",
+        "firstName": "Bandit",
+        "lastName": "Ace Two",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "6a1b2c3d-4e5f-6789-8abc-9def01234567",
+        "username": "no_rules",
+        "enabled": true,
+        "email": "no_rules@example.com",
+        "firstName": "No",
+        "lastName": "Rules",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "3e4f5a6b-7c8d-4e9f-a012-b345c678d901",
+        "username": "lootlin",
+        "enabled": true,
+        "email": "lootlin@example.com",
+        "firstName": "Lootlin",
+        "lastName": "Prime",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "4b5c6d7e-8f90-4a1b-9c2d-3e4f5a6b7c8d",
+        "username": "macro_mira",
+        "enabled": true,
+        "email": "macro_mira@example.com",
+        "firstName": "Macro",
+        "lastName": "Mira",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "5c6d7e8f-9012-4b3c-8d4e-5f6a7b8c9d0e",
+        "username": "tiltproof_tom_2",
+        "enabled": true,
+        "email": "tiltproof_tom_2@example.com",
+        "firstName": "Tiltproof",
+        "lastName": "Tom Two",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "7e8f9012-3a4b-4c5d-8e6f-0123456789ab",
+        "username": "indie_ivy_2",
+        "enabled": true,
+        "email": "indie_ivy_2@example.com",
+        "firstName": "Indie",
+        "lastName": "Ivy Two",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "8f901234-5b6c-4d7e-8f90-1a2b3c4d5e6f",
+        "username": "clip_chris_2",
+        "enabled": true,
+        "email": "clip_chris_2@example.com",
+        "firstName": "Clip",
+        "lastName": "Chris Two",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "90123456-7c8d-4e9f-a012-3b4c5d6e7f80",
+        "username": "builder_bea_2",
+        "enabled": true,
+        "email": "builder_bea_2@example.com",
+        "firstName": "Builder",
+        "lastName": "Bea Two",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+        "username": "speedy_sam_2",
+        "enabled": true,
+        "email": "speedy_sam_2@example.com",
+        "firstName": "Speedy",
+        "lastName": "Sam Two",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+        "username": "zen_zara_2",
+        "enabled": true,
+        "email": "zen_zara_2@example.com",
+        "firstName": "Zen",
+        "lastName": "Zara Two",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "c3d4e5f6-a7b8-4c9d-8e0f-1234567890ab",
+        "username": "atlas_adept",
+        "enabled": true,
+        "email": "atlas_adept@example.com",
+        "firstName": "Atlas",
+        "lastName": "Adept",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "d4e5f6a7-b8c9-4d0e-8f1a-2345678901bc",
+        "username": "pixel_piper",
+        "enabled": true,
+        "email": "pixel_piper@example.com",
+        "firstName": "Pixel",
+        "lastName": "Piper",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "e5f6a7b8-c9d0-4e1f-8a2b-3456789012cd",
+        "username": "queue_quinn",
+        "enabled": true,
+        "email": "queue_quinn@example.com",
+        "firstName": "Queue",
+        "lastName": "Quinn",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "f6a7b8c9-d0e1-4f2a-8b3c-4567890123de",
+        "username": "mossy_mako",
+        "enabled": true,
+        "email": "mossy_mako@example.com",
+        "firstName": "Mossy",
+        "lastName": "Mako",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "07a8b9c0-d1e2-4013-8c4d-5678901234ef",
+        "username": "storm_sienna",
+        "enabled": true,
+        "email": "storm_sienna@example.com",
+        "firstName": "Storm",
+        "lastName": "Sienna",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "18b9c0d1-e2f3-4124-8d5e-6789012345f0",
+        "username": "tempo_tariq",
+        "enabled": true,
+        "email": "tempo_tariq@example.com",
+        "firstName": "Tempo",
+        "lastName": "Tariq",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "29c0d1e2-f3a4-4235-8e6f-7890123456a1",
+        "username": "nova_nadia",
+        "enabled": true,
+        "email": "nova_nadia@example.com",
+        "firstName": "Nova",
+        "lastName": "Nadia",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "3ad1e2f3-a4b5-4346-8f70-8901234567b2",
+        "username": "bravo_basil",
+        "enabled": true,
+        "email": "bravo_basil@example.com",
+        "firstName": "Bravo",
+        "lastName": "Basil",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "4be2f3a4-b5c6-4457-8071-9012345678c3",
+        "username": "glitch_greta",
+        "enabled": true,
+        "email": "glitch_greta@example.com",
+        "firstName": "Glitch",
+        "lastName": "Greta",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "5cf3a4b5-c6d7-4568-9172-0123456789d4",
+        "username": "ember_evan",
+        "enabled": true,
+        "email": "ember_evan@example.com",
+        "firstName": "Ember",
+        "lastName": "Evan",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "6da4b5c6-d7e8-4679-a173-1234567890e5",
+        "username": "luna_lars",
+        "enabled": true,
+        "email": "luna_lars@example.com",
+        "firstName": "Luna",
+        "lastName": "Lars",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "7eb5c6d7-e8f9-478a-b274-2345678901f6",
+        "username": "cipher_cleo",
+        "enabled": true,
+        "email": "cipher_cleo@example.com",
+        "firstName": "Cipher",
+        "lastName": "Cleo",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "8fc6d7e8-f901-489b-c375-3456789012a7",
+        "username": "ranger_ryo",
+        "enabled": true,
+        "email": "ranger_ryo@example.com",
+        "firstName": "Ranger",
+        "lastName": "Ryo",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "90d7e8f9-0123-49ac-d476-4567890123b8",
+        "username": "vortex_victor",
+        "enabled": true,
+        "email": "vortex_victor@example.com",
+        "firstName": "Vortex",
+        "lastName": "Victor",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "a1e8f901-2345-4abd-e577-5678901234c9",
+        "username": "mellow_mina",
+        "enabled": true,
+        "email": "mellow_mina@example.com",
+        "firstName": "Mellow",
+        "lastName": "Mina",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "b2f90123-4567-4bce-f678-6789012345da",
+        "username": "sable_sorin",
+        "enabled": true,
+        "email": "sable_sorin@example.com",
+        "firstName": "Sable",
+        "lastName": "Sorin",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "c3012345-6789-4cdf-a789-7890123456eb",
+        "username": "drift_daria",
+        "enabled": true,
+        "email": "drift_daria@example.com",
+        "firstName": "Drift",
+        "lastName": "Daria",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "d4123456-7890-4def-b890-8901234567fc",
+        "username": "forge_felix",
+        "enabled": true,
+        "email": "forge_felix@example.com",
+        "firstName": "Forge",
+        "lastName": "Felix",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "e5234567-8901-4efa-c901-90123456780d",
+        "username": "opal_olivia",
+        "enabled": true,
+        "email": "opal_olivia@example.com",
+        "firstName": "Opal",
+        "lastName": "Olivia",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    },
+    {
+        "id": "f6345678-9012-4fab-d012-01234567891e",
+        "username": "kilo_kai",
+        "enabled": true,
+        "email": "kilo_kai@example.com",
+        "firstName": "Kilo",
+        "lastName": "Kai",
+        "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+        "realmRoles": ["user"]
+    }
+],
+    "roles": {
+        "realm": [
+            {
+                "name": "user",
+                "description": "Standard user role"
+            },
+            {
+                "name": "admin",
+                "description": "Administrator role"
+            }
+        ]
+    },
+    "clients": [
+        {
+            "clientId": "platform-frontend",
+            "enabled": true,
+            "publicClient": true,
+            "directAccessGrantsEnabled": true,
+            "standardFlowEnabled": true,
+            "redirectUris": [
+                "http://localhost:5173/*",
+                "http://localhost:8080/*",
+                "http://localhost:3000/*",
+                "https://oauth.pstmn.io/v1/callback"
+            ],
+            "webOrigins": [
+                "*"
+            ]
+        },
+        {
+            "clientId": "api-gateway",
+            "enabled": true,
+            "publicClient": false,
+            "secret": "gateway-client-secret",
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": true,
+            "authorizationServicesEnabled": true
+        }
+    ]
+}

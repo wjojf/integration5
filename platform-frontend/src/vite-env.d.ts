@@ -1,0 +1,15 @@
+/// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_API_BASE_URL: string;
+  readonly VITE_WS_URL: string;
+  readonly VITE_KC_URL: string;
+  readonly VITE_KC_REALM: string;
+  readonly VITE_KC_CLIENT_ID: string;
+  readonly VITE_KEYCLOAK_URL: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+

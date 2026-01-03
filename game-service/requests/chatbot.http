@@ -1,0 +1,270 @@
+### Chatbot Module API Requests
+### Base URL: http://localhost:8000/api/v1/chatbot
+### RAG-based chatbot for game rules and platform guidance
+
+@baseUrl = http://localhost:8000/api/v1/chatbot
+
+### ============================================================
+### PART 1: HEALTH CHECK
+### ============================================================
+
+### 1.1 Check Chatbot Health
+GET {{baseUrl}}/health
+Accept: application/json
+
+### Expected Response:
+### {
+###   "status": "healthy",
+###   "llm_enabled": false,
+###   "cache_enabled": true
+### }
+
+###
+
+### ============================================================
+### PART 2: CHAT CONVERSATIONS
+### ============================================================
+
+### 2.1 Start New Conversation
+### conversation_id: null means new conversation
+POST {{baseUrl}}/chat
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "How do I play Connect Four?",
+  "conversation_id": null,
+  "user_id": "demo-user"
+}
+
+### Expected Response:
+### {
+###   "response": "...",
+###   "conversation_id": "generated-uuid",
+###   "sources": [...]
+### }
+
+###
+
+### 2.2 Continue Existing Conversation
+### Replace conversation_id with the ID from previous response
+POST {{baseUrl}}/chat
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "What are the winning conditions?",
+  "conversation_id": "275b0bc3-567f-4117-8cd9-df514dead707",
+  "user_id": "demo-user"
+}
+
+###
+
+### 2.3 Ask About Game Strategy
+POST {{baseUrl}}/chat
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "What's the best opening move in Connect Four?",
+  "conversation_id": null,
+  "user_id": "demo-user"
+}
+
+###
+
+### 2.4 Ask About Platform Features
+POST {{baseUrl}}/chat
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "How do I earn achievements?",
+  "conversation_id": null,
+  "user_id": "demo-user"
+}
+
+###
+
+### 2.5 Multi-turn Conversation Example
+POST {{baseUrl}}/chat
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "Tell me about the AI difficulty levels",
+  "conversation_id": null,
+  "user_id": "demo-user"
+}
+
+### Then follow up with same conversation_id
+POST {{baseUrl}}/chat
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "Which level should I start with?",
+  "conversation_id": "USE_ID_FROM_PREVIOUS_RESPONSE",
+  "user_id": "demo-user"
+}
+
+###
+
+### ============================================================
+### PART 3: CONVERSATION HISTORY
+### ============================================================
+
+### 3.1 Get Conversation History
+### Replace CONVO_ID with actual conversation ID
+@conversationId = 275b0bc3-567f-4117-8cd9-df514dead707
+
+GET {{baseUrl}}/conversation/{{conversationId}}
+Accept: application/json
+
+### Expected Response:
+### {
+###   "conversation_id": "...",
+###   "messages": [
+###     {
+###       "role": "user",
+###       "content": "How do I play Connect Four?",
+###       "timestamp": "..."
+###     },
+###     {
+###       "role": "assistant",
+###       "content": "...",
+###       "timestamp": "..."
+###     }
+###   ]
+### }
+
+###
+
+### ============================================================
+### PART 4: EXAMPLE QUERIES BY TOPIC
+### ============================================================
+
+### 4.1 Game Rules
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "What are the rules of Connect Four?",
+  "conversation_id": null,
+  "user_id": "user-001"
+}
+
+###
+
+### 4.2 Game Strategy
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "How can I block my opponent in Connect Four?",
+  "conversation_id": null,
+  "user_id": "user-001"
+}
+
+###
+
+### 4.3 AI Player
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "How does the AI player work?",
+  "conversation_id": null,
+  "user_id": "user-001"
+}
+
+###
+
+### 4.4 Achievements
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "What achievements can I unlock?",
+  "conversation_id": null,
+  "user_id": "user-001"
+}
+
+###
+
+### 4.5 Friends & Social
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "How do I add friends to play with?",
+  "conversation_id": null,
+  "user_id": "user-001"
+}
+
+###
+
+### 4.6 Lobbies
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "How do game lobbies work?",
+  "conversation_id": null,
+  "user_id": "user-001"
+}
+
+###
+
+### ============================================================
+### PART 5: CONVERSATION CONTEXT EXAMPLES
+### ============================================================
+
+### 5.1 Start a conversation
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "I want to learn Connect Four",
+  "conversation_id": null,
+  "user_id": "learner-001"
+}
+
+### Save the conversation_id from response, then continue:
+
+###
+
+### 5.2 Follow-up question
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "Can you explain that in simpler terms?",
+  "conversation_id": "PASTE_CONVERSATION_ID_HERE",
+  "user_id": "learner-001"
+}
+
+###
+
+### 5.3 Another follow-up
+POST {{baseUrl}}/chat
+Content-Type: application/json
+
+{
+  "message": "Show me an example",
+  "conversation_id": "PASTE_CONVERSATION_ID_HERE",
+  "user_id": "learner-001"
+}
+
+###
+
+### ============================================================
+### SUMMARY
+### ============================================================
+### ✅ RAG-based responses using game rules documentation
+### ✅ Multi-turn conversations with context preservation
+### ✅ Response caching for better performance
+### ✅ Support for OpenAI and Anthropic LLMs
+### ✅ Semantic search over game knowledge base
+### ✅ Topics: Rules, Strategy, AI, Achievements, Friends, Lobbies
+### ============================================================

@@ -1,0 +1,242 @@
+### Game Logger API - ML-Focused Endpoints
+### Base URL: http://localhost:8000/api/v1/game-logger
+### New Schema: session_logs + game_moves tables
+
+@baseUrl = http://localhost:8000
+
+##################################################
+# 1. HEALTH CHECK
+##################################################
+
+### Check if service is running
+GET {{baseUrl}}/health
+
+### Check loaded modules
+GET {{baseUrl}}/modules
+
+##################################################
+# 2. SESSION MANAGEMENT (ML-Focused)
+##################################################
+
+### Create a new game session
+POST {{baseUrl}}/api/v1/game-logger/session/create
+Content-Type: application/json
+
+{
+    "session_id": "session-cf-001",
+    "game_type": "connect_four",
+    "p1_type": "ai",
+    "p2_type": "ai",
+    "p1_agent": "mcts_500",
+    "p2_agent": "mcts_100",
+    "p1_agent_level": "high",
+    "p2_agent_level": "medium",
+    "tag": "selfplay_v1"
+}
+
+### Finish a game session
+POST {{baseUrl}}/api/v1/game-logger/session/finish
+Content-Type: application/json
+
+{
+    "session_id": "session-cf-001",
+    "winner": "p1",
+    "num_moves": 19,
+    "duration_seconds": 3.45
+}
+
+##################################################
+# 3. MOVE LOGGING (ML Training Data)
+##################################################
+
+### Log a single move with expert labels
+POST {{baseUrl}}/api/v1/game-logger/move/log
+Content-Type: application/json
+
+{
+    "session_id": "session-cf-001",
+    "move_number": 1,
+    "current_player": "p1",
+    "current_player_id": 1,
+    "board_state": {
+        "board": [[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]],
+        "current_player": 1
+    },
+    "board_flat": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    "legal_moves_mask": [1,1,1,1,1,1,1],
+    "played_move": 3,
+    "expert_policy": [0.1, 0.05, 0.15, 0.4, 0.15, 0.1, 0.05],
+    "expert_best_move": 3,
+    "expert_value": 0.52,
+    "mcts_iterations": 500,
+    "game_status": "ongoing"
+}
+
+### Log move 2
+POST {{baseUrl}}/api/v1/game-logger/move/log
+Content-Type: application/json
+
+{
+    "session_id": "session-cf-001",
+    "move_number": 2,
+    "current_player": "p2",
+    "current_player_id": 2,
+    "board_state": {
+        "board": [[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,1,0,0,0]],
+        "current_player": 2
+    },
+    "board_flat": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0],
+    "legal_moves_mask": [1,1,1,1,1,1,1],
+    "played_move": 2,
+    "expert_policy": [0.05, 0.1, 0.35, 0.25, 0.15, 0.05, 0.05],
+    "expert_best_move": 2,
+    "expert_value": 0.48,
+    "mcts_iterations": 100,
+    "game_status": "ongoing"
+}
+
+##################################################
+# 4. RETRIEVE LOGS
+##################################################
+
+### Get all moves for a session
+GET {{baseUrl}}/api/v1/game-logger/session/session-cf-001/moves
+
+### Get session stats
+GET {{baseUrl}}/api/v1/game-logger/session/session-cf-001/stats
+
+### Get recent moves (last 100)
+GET {{baseUrl}}/api/v1/game-logger/moves/recent?limit=100
+
+### Get database statistics
+GET {{baseUrl}}/api/v1/game-logger/stats
+
+##################################################
+# 5. DATASET EXPORT - Parquet Files
+##################################################
+
+### Export dataset v1 (basic)
+POST {{baseUrl}}/api/v1/game-logger/export-dataset
+Content-Type: application/json
+
+{
+    "version": "v1",
+    "tag": "selfplay_v1"
+}
+
+### Export dataset v2 (filtered by agent)
+POST {{baseUrl}}/api/v1/game-logger/export-dataset
+Content-Type: application/json
+
+{
+    "version": "v2",
+    "limit": 5000,
+    "agent_types": ["mcts_500", "mcts_100"],
+    "min_games": 10,
+    "tag": "selfplay_v1"
+}
+
+### Get dataset statistics
+GET {{baseUrl}}/api/v1/game-logger/dataset-stats
+
+##################################################
+# 6. COMPLETE GAME EXAMPLE (Connect Four)
+##################################################
+
+### Step 1: Create session
+POST {{baseUrl}}/api/v1/game-logger/session/create
+Content-Type: application/json
+
+{
+    "session_id": "demo-game-001",
+    "game_type": "connect_four",
+    "p1_type": "ai",
+    "p2_type": "ai",
+    "p1_agent": "mcts_500",
+    "p2_agent": "mcts_100",
+    "p1_agent_level": "high",
+    "p2_agent_level": "low",
+    "tag": "demo"
+}
+
+### Step 2a: Log Move 1 (P1)
+POST {{baseUrl}}/api/v1/game-logger/move/log
+Content-Type: application/json
+
+{
+    "session_id": "demo-game-001",
+    "move_number": 1,
+    "current_player": "p1",
+    "current_player_id": 1,
+    "board_state": {"board": [[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]]},
+    "board_flat": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    "legal_moves_mask": [1,1,1,1,1,1,1],
+    "played_move": 3,
+    "expert_policy": [0.12, 0.10, 0.15, 0.30, 0.15, 0.10, 0.08],
+    "expert_best_move": 3,
+    "expert_value": 0.51,
+    "mcts_iterations": 500,
+    "game_status": "ongoing"
+}
+
+### Step 2b: Log Move 2 (P2)
+POST {{baseUrl}}/api/v1/game-logger/move/log
+Content-Type: application/json
+
+{
+    "session_id": "demo-game-001",
+    "move_number": 2,
+    "current_player": "p2",
+    "current_player_id": 2,
+    "board_state": {"board": [[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,1,0,0,0]]},
+    "board_flat": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0],
+    "legal_moves_mask": [1,1,1,1,1,1,1],
+    "played_move": 2,
+    "expert_policy": [0.10, 0.12, 0.28, 0.22, 0.15, 0.08, 0.05],
+    "expert_best_move": 2,
+    "expert_value": 0.49,
+    "mcts_iterations": 100,
+    "game_status": "ongoing"
+}
+
+### Step 3: Finish session
+POST {{baseUrl}}/api/v1/game-logger/session/finish
+Content-Type: application/json
+
+{
+    "session_id": "demo-game-001",
+    "winner": "p1",
+    "num_moves": 19,
+    "duration_seconds": 4.2
+}
+
+### Step 4: Retrieve session moves
+GET {{baseUrl}}/api/v1/game-logger/session/demo-game-001/moves
+
+##################################################
+# 7. QUERY BY TAG (Dataset Filtering)
+##################################################
+
+### Get all selfplay_v1 sessions
+GET {{baseUrl}}/api/v1/game-logger/sessions/tag/selfplay_v1?limit=50
+
+### Get all demo sessions
+GET {{baseUrl}}/api/v1/game-logger/sessions/tag/demo?limit=10
+
+##################################################
+# NOTES
+##################################################
+
+# Database Tables:
+# - session_logs: session_id (PK), game_type, p1/p2 config, winner, etc.
+# - game_moves: id (PK), session_id (FK), move data + expert labels
+
+# Key ML Fields:
+# - board_flat: [42] flattened board for neural network input
+# - expert_policy: [7] MCTS probability distribution (soft label)
+# - expert_best_move: argmax(expert_policy) (hard label)
+# - expert_value: Win probability [0-1] from MCTS
+
+# To restart database with new schema:
+# docker-compose down -v
+# docker-compose up -d postgres

@@ -1,0 +1,139 @@
+### Variables
+@baseUrl = http://localhost:8081
+
+
+@userToken =eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJDY3BUY1lta0F5RTI5NThkSFVPN0t4eW82UkdQSmw0RWVKbi1nbjBzUllFIn0.eyJleHAiOjE3NjY2OTQ5MzcsImlhdCI6MTc2NjY5NDYzNywianRpIjoib25ydHJvOmZkMWEwODIyLWQ4ODktNDA2Mi05YzcwLWQ4ZDFlZjY4OWY4YSIsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODE4MC9yZWFsbXMvYmFuZGl0Z2FtZXMiLCJzdWIiOiJkODNjZGEzYy03OTkyLTQ2NTYtYmVmZS0yY2I3ZWU1NmJmMDciLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJwbGF0Zm9ybS1mcm9udGVuZCIsInNpZCI6IjhjOTI3Y2IyLWFjYWUtNDBlOC04NGI0LWZhYmY1YzBiMThmMCIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOlsiKiJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsidXNlciJdfSwic2NvcGUiOiJlbWFpbCBwcm9maWxlIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoiVXNlciBPbmUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJ1c2VyMSIsImdpdmVuX25hbWUiOiJVc2VyIiwiZmFtaWx5X25hbWUiOiJPbmUiLCJlbWFpbCI6InVzZXIxQGJhbmRpdGdhbWVzLmNvbSJ9.Ex0tCSapTH1jYErpRWq8ZgY_ZxTwh2guaIWTv17N4FqZtA8XBckq0ZQvXHD0Hn1l1WzW65KpYNkMVm3tsHfFrLCqBKGt438Du1WTGkLZOLK8vahEmvmTdOtuvfaa1NXePf_jah8g3bPAJaJOFEhq1zIQ_cJ7q9fvnVZeHSfOSTHpvdcADUnqXhl8YI11QSus6mVh_uS3Kenlsa0qkstf8F1LUdvzbdO1J7szJWlaT_7bWAvj1xjA1jFwB-X8ilsaQWBUJbIPDrAJTK8OaVPnLNzqfUwozPMzIJIdWa7nN7idMSXoc783nOH4xoKfiDcrGJTkF9Go7ZiiGbbkEP6Pqg
+### ============================================
+### LOBBIES DOMAIN
+### Base Path: /api/lobbies
+### Security: Requires Bearer Token
+### ============================================
+
+### Create a New Lobby - Public
+# POST /api/lobbies
+# Creates a new public lobby
+POST {{baseUrl}}/api/lobbies
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "maxPlayers": 4,
+  "isPrivate": false
+}
+
+> {%
+  client.global.set("lobbyId", response.body.id);
+%}
+
+###
+
+### Create a New Lobby - Private
+# POST /api/lobbies
+# Creates a new private lobby
+POST {{baseUrl}}/api/lobbies
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "maxPlayers": 2,
+  "isPrivate": true
+}
+
+> {%
+  client.global.set("privateLobbyId", response.body.id);
+%}
+
+###
+
+### Create Lobby - Maximum Players
+POST {{baseUrl}}/api/lobbies
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "maxPlayers": 10,
+  "isPrivate": false
+}
+
+###
+
+### Join a Lobby
+# POST /api/lobbies/{lobbyId}/join
+# Join an existing lobby
+# Replace {lobbyId} with actual UUID or use {{lobbyId}} from previous request
+POST {{baseUrl}}/api/lobbies/{{lobbyId}}/join
+Authorization: Bearer {{adminToken}}
+
+###
+
+### Leave a Lobby
+# POST /api/lobbies/{lobbyId}/leave
+# Leave a lobby you're currently in
+POST {{baseUrl}}/api/lobbies/{{lobbyId}}/leave
+Authorization: Bearer {{userToken}}
+
+###
+
+### Start Lobby with Game
+# POST /api/lobbies/{lobbyId}/start
+# Start the lobby with a specific game
+POST {{baseUrl}}/api/lobbies/{{lobbyId}}/start
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "gameId": "550e8400-e29b-41d4-a716-446655440001"
+}
+
+###
+
+### Invite Friend to Private Lobby
+# POST /api/lobbies/{lobbyId}/invite
+# Invite a friend to a private lobby
+POST {{baseUrl}}/api/lobbies/{{privateLobbyId}}/invite
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "invitedPlayerId": "550e8400-e29b-41d4-a716-446655440002"
+}
+
+###
+
+### Get Lobby Details
+# GET /api/lobbies/{lobbyId}
+# Get detailed information about a specific lobby
+GET {{baseUrl}}/api/lobbies/{{lobbyId}}
+Authorization: Bearer {{userToken}}
+
+###
+
+### Search Public Lobbies - All
+# GET /api/lobbies/search
+# Get all public lobbies
+GET {{baseUrl}}/api/lobbies/search
+Authorization: Bearer {{userToken}}
+
+###
+
+### Search Lobbies - By Game ID
+# GET /api/lobbies/search?gameId={gameId}
+# Search for lobbies by game ID
+GET {{baseUrl}}/api/lobbies/search?gameId=550e8400-e29b-41d4-a716-446655440001
+Authorization: Bearer {{userToken}}
+
+###
+
+### Search Lobbies - By Username
+# GET /api/lobbies/search?username={username}
+# Search for lobbies by host username
+GET {{baseUrl}}/api/lobbies/search?username=user1
+Authorization: Bearer {{userToken}}
+
+###
+
+### Search Lobbies - By Game and Username
+# GET /api/lobbies/search?gameId={gameId}&username={username}
+# Search for lobbies by both game ID and username
+GET {{baseUrl}}/api/lobbies/search?gameId=550e8400-e29b-41d4-a716-446655440001&username=pro
+Authorization: Bearer {{userToken}}

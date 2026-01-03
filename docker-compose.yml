@@ -1,0 +1,505 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # Shared Infrastructure Services
+  # ============================================
+
+  # Shared PostgreSQL Database
+  # All services use this instance with separate databases
+  postgres:
+    image: postgres:16-alpine
+    container_name: banditgames-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}  # Default database for initialization
+      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES:-banditgames,game_service,keycloak}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-multiple-databases.sh:/docker-entrypoint-initdb.d/01-init-multiple-databases.sh:ro
+      - ./platform-backend/src/main/resources/sql/migration_add_lobby_name_description.sql:/docker-entrypoint-initdb.d/02-migration-lobby-name-description.sql:ro
+      - ./platform-backend/src/main/resources/sql/data.sql:/docker-entrypoint-initdb.d/03-platform-data.sql:ro
+      - ./game-service/docs/database/schema.sql:/docker-entrypoint-initdb.d/04-game-service-schema.sql:ro
+    networks:
+      - banditgames-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # Shared RabbitMQ Message Broker
+  # All services use this instance for asynchronous messaging
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: banditgames-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-admin}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"      # AMQP port
+      - "${RABBITMQ_MGMT_PORT:-15672}:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_config:/etc/rabbitmq
+    networks:
+      - banditgames-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # Shared Redis Cache
+  # Used by API Gateway for rate limiting and caching
+  redis:
+    image: redis:7-alpine
+    container_name: banditgames-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      sh -c "
+      if [ -n \"$$REDIS_PASSWORD\" ]; then
+        redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\"
+      else
+        redis-server --appendonly yes
+      fi
+      "
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    networks:
+      - banditgames-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # Keycloak Identity Provider (SSO)
+  # Provides authentication and authorization for all services
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: banditgames-keycloak
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER:-postgres}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_RELATIVE_PATH: /
+      KC_PROXY: edge
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8180}:8080"
+    volumes:
+      - ./platform-backend/keycloak/realm-export.json:/opt/keycloak/data/import/banditgames.json:ro
+      - ./platform-backend/keycloak/keycloak-themes:/opt/keycloak/themes/banditgames-themes:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - banditgames-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # ============================================
+  # Application Services
+  # ============================================
+
+  # API Gateway
+  # Central entry point for all client requests
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: banditgames-api-gateway
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"
+    environment:
+      # Service URLs (use Docker service names)
+      PLATFORM_BACKEND_URL: http://platform-backend:8081
+      GAME_SERVICE_URL: http://game-service:8000
+      CHESS_GAME_SERVICE_URL: http://chess-game-backend:8080  # Internal port (container port)
+
+      # Keycloak Configuration
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/banditgames
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/banditgames/protocol/openid-connect/certs
+
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+
+      # Service-to-Service Authentication
+      SERVICE_API_KEY: ${SERVICE_API_KEY:-default-dev-key}
+      GATEWAY_SERVICE_NAME: api-gateway
+
+      # CORS
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
+    depends_on:
+      keycloak:
+        condition: service_started  # Changed to started instead of healthy (Keycloak takes time to be healthy)
+      redis:
+        condition: service_healthy
+      platform-backend:
+        condition: service_started  # Changed to started instead of healthy
+      game-service:
+        condition: service_healthy
+    networks:
+      - banditgames-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Platform Backend
+  # Handles lobbies, friends, achievements, game registry
+  platform-backend:
+    build:
+      context: ./platform-backend
+      dockerfile: Dockerfile
+    container_name: banditgames-platform-backend
+    ports:
+      - "${PLATFORM_BACKEND_PORT:-8081}:8081"
+    environment:
+      # Database Configuration (shared PostgreSQL)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/banditgames
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+
+      # RabbitMQ Configuration (shared)
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-admin}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+
+      # Game Service Configuration
+      GAME_SERVICE_URL: http://game-service:8000
+      GAME_SERVICE_API_KEY: ${SERVICE_API_KEY:-default-dev-key}
+
+      # Chess Game Configuration (External)
+      CHESS_GAME_SERVICE_URL: http://chess-game-backend:8080
+      CHESS_GAME_API_KEY: ${CHESS_GAME_API_KEY:-}
+      CHESS_GAME_EXCHANGE: ${CHESS_GAME_EXCHANGE:-gameExchange}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      game-service:
+        condition: service_healthy
+    networks:
+      - banditgames-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # Separate deployment for RabbitMQ event consumers
+  # Consumes game events and processes them (game session start, game logging, etc.)
+  game-service-consumer:
+    build:
+      context: ./game-service
+      dockerfile: Dockerfile.consumer
+    container_name: banditgames-game-service-consumer
+    environment:
+      # Application Configuration
+      APP_NAME: Game Service Consumer
+      APP_VERSION: 1.0.0
+      DEBUG: ${DEBUG:-false}
+
+      # Database Configuration (shared PostgreSQL)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: game_service
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/game_service
+
+      # RabbitMQ Configuration (shared)
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-admin}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      RABBITMQ_EXCHANGE_NAME: game_events
+
+      # Module Configuration
+      MODULE_GAMES_ENABLED: ${MODULE_GAMES_ENABLED:-true}
+      MODULE_AI_PLAYER_ENABLED: ${MODULE_AI_PLAYER_ENABLED:-false}
+      MODULE_GAME_LOGGER_ENABLED: ${MODULE_GAME_LOGGER_ENABLED:-true}
+      MODULE_CHATBOT_ENABLED: ${MODULE_CHATBOT_ENABLED:-false}
+      MODULE_ML_MODELS_ENABLED: ${MODULE_ML_MODELS_ENABLED:-false}
+      LOGGER_ENABLED: ${LOGGER_ENABLED:-true}
+
+      # Platform Backend Configuration
+      PLATFORM_BACKEND_URL: http://platform-backend:8081
+    volumes:
+      - game_service_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      game-service:
+        condition: service_healthy
+    networks:
+      - banditgames-network
+
+  # Game Service (Python FastAPI)
+  # Handles game engine, AI player, ML models, chatbot, game logging
+  game-service:
+    build:
+      context: ./game-service
+      dockerfile: Dockerfile
+    container_name: banditgames-game-service
+    ports:
+      - "${GAME_SERVICE_PORT:-8000}:8000"
+    environment:
+      # Application Configuration
+      APP_NAME: Game Service
+      APP_VERSION: 1.0.0
+      DEBUG: ${DEBUG:-false}
+      API_PREFIX: /api/v1
+
+      # Database Configuration (shared PostgreSQL)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: game_service
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/game_service
+
+      # RabbitMQ Configuration (shared)
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-admin}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      RABBITMQ_EXCHANGE_NAME: game_events
+
+      # Module Configuration
+      MODULE_GAMES_ENABLED: ${MODULE_GAMES_ENABLED:-true}
+      MODULE_AI_PLAYER_ENABLED: ${MODULE_AI_PLAYER_ENABLED:-true}
+      MODULE_GAME_LOGGER_ENABLED: ${MODULE_GAME_LOGGER_ENABLED:-true}
+      MODULE_CHATBOT_ENABLED: ${MODULE_CHATBOT_ENABLED:-true}
+      MODULE_ML_MODELS_ENABLED: ${MODULE_ML_MODELS_ENABLED:-true}
+
+      # Chatbot Configuration
+      CHATBOT_ENABLED: ${CHATBOT_ENABLED:-true}
+      CHATBOT_USE_LLM: ${CHATBOT_USE_LLM:-true}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-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}
+      OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}
+      CHATBOT_CACHE_ENABLED: ${CHATBOT_CACHE_ENABLED:-true}
+      CHATBOT_VECTOR_DB_PATH: /app/data/vector_db
+
+      # Platform Backend Configuration
+      PLATFORM_BACKEND_URL: http://platform-backend:8081
+      JAVA_BACKEND_BASE_URL: http://api-gateway:8080
+    volumes:
+      - game_service_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - banditgames-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # External Chess Game - Backend (Spring Boot)
+  # External game service integrated via ACL
+  # Uses pre-built image from GitLab registry
+  chess-game-backend:
+    image: ${CHESS_GAME_BACKEND_IMAGE:-registry.gitlab.com/kdg-ti/integration-5/chessgame/back:latest}
+    container_name: banditgames-chess-backend
+    ports:
+      - "${CHESS_GAME_BACKEND_PORT:-8090}:8080"  # Use 8090 externally to avoid conflict with API Gateway
+    environment:
+      # Game Registration ID
+      GAME_REGISTRATION_ID: ${CHESS_GAME_REGISTRATION_ID:-8496c496-a884-48ed-9bb3-7c3aa50fb8ca}
+
+      # Database Configuration (shared PostgreSQL)
+      # Note: Chess game uses 'postgres' database, not a separate 'chess_game' database
+      DATASOURCE_URL: jdbc:postgresql://postgres:5432/${CHESS_DB_NAME:-postgres}
+      DATASOURCE_USER: ${POSTGRES_USER:-postgres}
+      DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+
+      # RabbitMQ Configuration (shared)
+      RABBIT_HOST: rabbitmq
+      RABBIT_PORT: 5672
+      RABBIT_USER: ${RABBITMQ_USER:-admin}
+      RABBIT_PASSWORD: ${RABBITMQ_PASSWORD:-admin}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - banditgames-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    profiles:
+      - chess  # Only start if --profile chess is used
+
+  # External Chess Game - Frontend (React)
+  # Frontend for the external chess game
+  # Uses pre-built image from GitLab registry
+  chess-game-frontend:
+    image: ${CHESS_GAME_FRONTEND_IMAGE:-registry.gitlab.com/kdg-ti/integration-5/chessgame/front:latest}
+    container_name: banditgames-chess-frontend
+    ports:
+      - "${CHESS_GAME_FRONTEND_PORT:-3333}:80"
+    environment:
+      REACT_APP_API_URL: http://localhost:${CHESS_GAME_BACKEND_PORT:-8090}/api
+    depends_on:
+      - chess-game-backend
+      - rabbitmq
+      - postgres
+    networks:
+      - banditgames-network
+    restart: unless-stopped
+    profiles:
+      - chess  # Only start if --profile chess is used
+
+  # Platform Frontend (React)
+  # Main platform frontend application
+  platform-frontend:
+    build:
+      context: ./platform-frontend
+      dockerfile: Dockerfile
+    container_name: banditgames-frontend
+    ports:
+      - "${PLATFORM_FRONTEND_PORT:-5173}:80"
+    environment:
+      REACT_APP_API_URL: http://localhost:8080/api
+      REACT_APP_KEYCLOAK_URL: http://localhost:8180
+      REACT_APP_KEYCLOAK_REALM: banditgames
+      REACT_APP_KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-platform-frontend}
+    depends_on:
+      - api-gateway
+      - keycloak
+    networks:
+      - banditgames-network
+    restart: unless-stopped
+
+  # ============================================
+  # Optional Services (ML/AI)
+  # ============================================
+
+  # MLFlow Tracking Server (Optional)
+  # For ML experiment tracking
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.8.1
+    container_name: banditgames-mlflow
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    environment:
+      MLFLOW_BACKEND_STORE_URI: sqlite:///mlflow/mlflow.db
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /mlflow/artifacts
+    volumes:
+      - mlflow_data:/mlflow
+    networks:
+      - banditgames-network
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000
+    restart: unless-stopped
+    profiles:
+      - ml  # Only start with --profile ml
+
+  # MinIO (Optional - for DVC remote storage)
+  # Object storage for dataset versioning
+  minio:
+    image: minio/minio:latest
+    container_name: banditgames-minio
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - banditgames-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+    profiles:
+      - ml  # Only start with --profile ml
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  rabbitmq_config:
+    driver: local
+  redis_data:
+    driver: local
+  game_service_data:
+    driver: local
+  mlflow_data:
+    driver: local
+  minio_data:
+    driver: local
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  banditgames-network:
+    driver: bridge
+    name: banditgames-network

@@ -1,0 +1,94 @@
+### Variables
+@baseUrl = http://localhost:8081
+
+### ============================================
+### FRIENDS DOMAIN
+### Base Path: /api/friends
+### Security: Requires Bearer Token
+### ============================================
+
+### Send Friend Request
+# POST /api/friends/requests
+# Send a friend request to another player
+POST {{baseUrl}}/api/friends/requests
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "addresseeId": "550e8400-e29b-41d4-a716-446655440001"
+}
+
+> {%
+  client.global.set("friendshipId", response.body.id);
+%}
+
+###
+
+### Get Friends List - Pending Requests
+# GET /api/friends?status=PENDING
+# Get all pending friend requests
+GET {{baseUrl}}/api/friends?status=PENDING
+Authorization: Bearer {{userToken}}
+
+###
+
+### Get Friends List - Accepted Friends
+# GET /api/friends?status=ACCEPTED
+# Get all accepted friends
+GET {{baseUrl}}/api/friends?status=ACCEPTED
+Authorization: Bearer {{userToken}}
+
+###
+
+### Get Friends List - Rejected Requests
+# GET /api/friends?status=REJECTED
+# Get all rejected friend requests
+GET {{baseUrl}}/api/friends?status=REJECTED
+Authorization: Bearer {{userToken}}
+
+###
+
+### Get Friends List - Blocked Users
+# GET /api/friends?status=BLOCKED
+# Get all blocked users
+GET {{baseUrl}}/api/friends?status=BLOCKED
+Authorization: Bearer {{userToken}}
+
+###
+
+### Accept Friend Request
+# PATCH /api/friends/requests/{friendshipId}
+# Accept a pending friend request
+PATCH {{baseUrl}}/api/friends/requests/{{friendshipId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "action": "ACCEPT"
+}
+
+###
+
+### Reject Friend Request
+# PATCH /api/friends/requests/{friendshipId}
+# Reject a pending friend request
+PATCH {{baseUrl}}/api/friends/requests/{{friendshipId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "action": "REJECT"
+}
+
+###
+
+### Block User
+# PATCH /api/friends/requests/{friendshipId}
+# Block a user
+PATCH {{baseUrl}}/api/friends/requests/{{friendshipId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "action": "BLOCK"
+}

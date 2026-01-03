@@ -1,0 +1,63 @@
+include:
+  - template: Jobs/Dependency-Scanning.gitlab-ci.yml
+
+stages:
+  - test
+  - analyze
+  - docker
+
+variables:
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
+
+cache:
+  key: "gradle-${CI_COMMIT_REF_SLUG}"
+  paths:
+    - .gradle/wrapper
+    - .gradle/caches
+
+test_spring_app:
+  stage: test
+  image: gradle:8.14-jdk21
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+    - name: rabbitmq:3-management
+      alias: rabbitmq
+  variables:
+    POSTGRES_DB: banditgames
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: student
+    SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/banditgames"
+    SPRING_DATASOURCE_USERNAME: "postgres"
+    SPRING_DATASOURCE_PASSWORD: "student"
+    SPRING_RABBITMQ_HOST: "rabbitmq"
+    SPRING_RABBITMQ_PORT: "5672"
+    SPRING_RABBITMQ_USERNAME: "guest"
+    SPRING_RABBITMQ_PASSWORD: "guest"
+  script:
+    - gradle clean test --no-daemon
+  artifacts:
+    when: on_success
+    reports:
+      junit: "**/build/test-results/test/*.xml"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+
+docker_build_platform_backend:
+  stage: docker
+  image: docker:27
+  services:
+    - name: docker:27-dind
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+  needs:
+    - job: test_spring_app
+      optional: true
+  script:
+    - docker build -f Dockerfile -t "$CI_PROJECT_NAME:$CI_COMMIT_SHA" .
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH

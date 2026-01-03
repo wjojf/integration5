@@ -1,0 +1,334 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      # Enable response buffering to ensure response bodies are properly forwarded
+      httpclient:
+        response-timeout: 30s
+        connect-timeout: 5
+      routes:
+        # Direct Chess Game API Routes (for chess frontend)
+        # Routes /api/games/** and /api/moves/** directly to chess backend
+        # Must be FIRST to match before other routes
+        - id: chess-game-direct-games
+          uri: ${CHESS_GAME_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/games/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: chessGameService
+                fallbackUri: forward:/fallback/chess
+        
+        - id: chess-game-direct-moves
+          uri: ${CHESS_GAME_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/moves/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: chessGameService
+                fallbackUri: forward:/fallback/chess
+
+        # Platform Backend - Chess Registration (Public, no auth required)
+        # Allows external chess frontend to register games
+        # Rewrites /api/platform/register/{gameId} to /api/external/chess/register/{gameId}
+        - id: platform-backend-chess-register
+          uri: ${PLATFORM_BACKEND_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/platform/register/**
+          filters:
+            # Rewrite /api/platform/register/{gameId} to /api/external/chess/register/{gameId}
+            - RewritePath=/api/platform/register/([^/]+), /api/external/chess/register/$1
+            - name: CircuitBreaker
+              args:
+                name: platformBackend
+                fallbackUri: forward:/fallback/platform
+            - name: AddRequestHeader
+              args:
+                name: X-API-Key
+                value: ${SERVICE_API_KEY:default-dev-key}
+
+        # Platform Backend - WebSocket (Chat)
+        # Routes /ws/** to platform-backend for STOMP/SockJS chat websocket connections
+        # Spring Cloud Gateway automatically handles websocket protocol upgrades
+        # Note: No filters applied to avoid interfering with websocket handshake
+        - id: platform-backend-websocket
+          uri: ${PLATFORM_BACKEND_URL:http://localhost:8081}
+          predicates:
+            - Path=/ws/**
+          filters:
+            # Preserve all headers (especially Authorization for JWT authentication)
+            # No rate limiting or circuit breaker to avoid websocket connection issues
+            - name: AddRequestHeader
+              args:
+                name: X-API-Key
+                value: ${SERVICE_API_KEY:default-dev-key}
+
+        # Platform Backend Routes
+        - id: platform-backend
+          uri: ${PLATFORM_BACKEND_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/platform/**
+          filters:
+            - StripPrefix=2
+            - PrefixPath=/api
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 200
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: platformBackend
+                fallbackUri: forward:/fallback/platform
+            - name: AddRequestHeader
+              args:
+                name: X-API-Key
+                value: ${SERVICE_API_KEY:default-dev-key}
+
+        # Game Service - All Routes (including WebSocket)
+        - id: game-service
+          uri: ${GAME_SERVICE_URL:http://127.0.0.1:8000}
+          predicates:
+            - Path=/api/v1/games/**,/api/v1/chatbot/**,/api/v1/ai-player/**,/api/v1/ai_player/**
+          filters:
+            # Rewrite /api/v1/ai-player/** to /api/v1/ai_player/** (module uses underscore)
+            # This handles frontend calls using hyphen, converting to underscore for game-service
+            - RewritePath=/api/v1/ai-player/(?<segment>.*), /api/v1/ai_player/$\\{segment}
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 200
+                redis-rate-limiter.burstCapacity: 400
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: gameService
+                fallbackUri: forward:/fallback/game
+            - name: AddRequestHeader
+              args:
+                name: X-API-Key
+                value: ${SERVICE_API_KEY:default-dev-key}
+
+
+
+        # External Games (ACL) - Chess Game REST API
+        # Routes chess game REST calls to external chess service with ACL transformation
+        # Transforms our internal format to external chess service format
+        # External chess service: Spring Boot API on port 8080 (see docs/chess.md)
+        - id: external-chess-game-sessions
+          uri: ${CHESS_GAME_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/external/chess/games/**
+          filters:
+            # Transform /api/external/chess/games/{gameId} to /api/games/{gameId} (external chess service format)
+            - RewritePath=/api/external/chess/games/(?<gameId>[^/]+), /api/games/$\\{gameId}
+            - name: ACLTransformFilter
+              args:
+                enabled: true
+                direction: both
+            - name: CircuitBreaker
+              args:
+                name: chessGameService
+                fallbackUri: forward:/fallback/chess
+
+        # Direct Chess Game API Routes (for chess frontend)
+        # Routes /api/games/** and /api/moves/** directly to chess backend
+        # This allows the chess frontend to call the gateway directly
+        # Note: Must be before the game-service route to avoid conflicts
+        - id: chess-game-direct-games
+          uri: ${CHESS_GAME_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/games/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: chessGameService
+                fallbackUri: forward:/fallback/chess
+        
+        - id: chess-game-direct-moves
+          uri: ${CHESS_GAME_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/moves/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: chessGameService
+                fallbackUri: forward:/fallback/chess
+
+        # External Games (ACL) - Chess Game Moves
+        - id: external-chess-game-moves
+          uri: ${CHESS_GAME_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/external/chess/moves/**
+          filters:
+            # Transform /api/external/chess/moves/{gameId} to /api/moves/{gameId} (external chess service format)
+            - RewritePath=/api/external/chess/moves/(?<gameId>[^/]+), /api/moves/$\\{gameId}
+            - name: ACLTransformFilter
+              args:
+                enabled: true
+                direction: both
+            - name: CircuitBreaker
+              args:
+                name: chessGameService
+                fallbackUri: forward:/fallback/chess
+
+        # External Games (ACL) - Chess Game Registration
+        # Routes registration to platform backend (which handles registration and publishes RabbitMQ event)
+        # Gateway generates gameId according to platform rules (UUID)
+        - id: external-chess-game-register
+          uri: ${PLATFORM_BACKEND_URL:http://platform-backend:8081}
+          predicates:
+            - Path=/api/external/chess/register
+          filters:
+            # Generate gameId (UUID) and rewrite path to /api/external/chess/register/{gameId}
+            # GameId is generated by gateway according to platform rules
+            - name: GenerateGameIdFilter
+              args:
+                enabled: true
+            - name: CircuitBreaker
+              args:
+                name: platformBackend
+                fallbackUri: forward:/fallback/platform
+
+        # External Games (ACL) - Generic
+        - id: external-games
+          uri: ${PLATFORM_BACKEND_URL:http://platform-backend:8081}
+          predicates:
+            - Path=/api/external/**
+          filters:
+            - StripPrefix=2
+            - name: ACLTransformFilter
+              args:
+                enabled: true
+            - name: AddRequestHeader
+              args:
+                name: X-API-Key
+                value: ${SERVICE_API_KEY:default-dev-key}
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:5173"  # Platform frontend
+              - "http://localhost:3333"  # Chess game frontend
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            exposedHeaders:
+              - Authorization
+              - Content-Type
+              - X-User-Id
+              - X-Username
+              - X-User-Roles
+            allowCredentials: true
+            maxAge: 3600
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/banditgames}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/banditgames/protocol/openid-connect/certs}
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      platformBackend:
+        baseConfig: default
+      gameService:
+        baseConfig: default
+
+  ratelimiter:
+    configs:
+      default:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0
+        registerHealthIndicator: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway
+  endpoint:
+    health:
+      show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+# Swagger/OpenAPI Configuration
+springdoc:
+  # SpringDoc's auto-generated OpenAPI (gateway-only, minimal)
+  # Our aggregated endpoint is at /api/docs/openapi.json (custom controller)
+  api-docs:
+    path: /api/docs/gateway-openapi.json
+    enabled: true
+  swagger-ui:
+    path: /api/docs/swagger-ui.html
+    enabled: true
+    # Use our custom aggregated OpenAPI endpoint (not SpringDoc's auto-generated one)
+    config-url: /api/docs/openapi.json
+    # Show only the aggregated API
+    urls:
+      - name: BanditGames Platform - Aggregated API
+        url: /api/docs/openapi.json
+
+# Service Registry Configuration
+# Maps route IDs and path patterns to service names for dynamic service resolution
+# This allows the gateway to scale to many services without hardcoding service names
+gateway:
+  services:
+    # Route ID to service name mappings (exact match)
+    route-id-to-service-name:
+      platform-backend: platform-backend
+      game-service: game-service
+      external-games: external-games
+    # Route ID prefix to service name mappings (for routes with dynamic IDs)
+    route-id-prefix-to-service-name:
+      external-chess: chess-service
+    # Path prefix to service name mappings (fallback when route ID not available)
+    path-prefix-to-service-name:
+      /api/platform: platform-backend
+      /api/games: game-service
+      /api/chatbot: game-service
+      /api/external/chess: chess-service
+      /api/external: external-games
+
+logging:
+  level:
+    com.banditgames.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: WARN
+    org.springframework.web: INFO
+    io.github.resilience4j: DEBUG
+
+

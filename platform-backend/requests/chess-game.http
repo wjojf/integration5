@@ -1,0 +1,47 @@
+### Variables
+@baseUrl = http://localhost:8081
+
+### ============================================
+### CHESS GAME EXTERNAL (ACL) DOMAIN
+### Base Path: /api/external/chess
+### Security: None (ACL integration endpoint)
+### ============================================
+
+### Register Chess Game
+# POST /api/external/chess/register/{gameId}
+# Register a new chess game in the platform
+# This is an ACL integration endpoint for external chess services
+POST {{baseUrl}}/api/external/chess/register/550e8400-e29b-41d4-a716-446655440001
+Content-Type: application/json
+
+{
+  "frontendUrl": "https://chess.banditgames.com/game/550e8400-e29b-41d4-a716-446655440001",
+  "pictureUrl": "https://chess.banditgames.com/assets/chess-board.png"
+}
+
+> {%
+  client.global.set("chessGameId", response.body.id);
+%}
+
+###
+
+### Register Chess Game - Different Example
+POST {{baseUrl}}/api/external/chess/register/550e8400-e29b-41d4-a716-446655440002
+Content-Type: application/json
+
+{
+  "frontendUrl": "https://chess.example.com/play/550e8400-e29b-41d4-a716-446655440002",
+  "pictureUrl": "https://cdn.example.com/images/chess-thumbnail.jpg"
+}
+
+###
+
+### Get Chess Game Information
+# GET /api/external/chess/games/{gameId}
+# Retrieve information about a registered chess game
+GET {{baseUrl}}/api/external/chess/games/550e8400-e29b-41d4-a716-446655440001
+
+###
+
+### Get Chess Game Information - Using Saved ID
+GET {{baseUrl}}/api/external/chess/games/{{chessGameId}}

@@ -1,0 +1,116 @@
+# Docker Compose configuration for Game AI/ML Service
+# Includes all required services: PostgreSQL, RabbitMQ, MLFlow, etc.
+
+version: '3.8'
+
+services:
+  # Game AI/ML Service Application
+  game-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: game-ai-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Docker-specific service hostnames (override config.py localhost defaults)
+      - DB_HOST=banditgames-postgres
+      - DB_PORT=5432
+      - DB_NAME=banditgames
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - RABBITMQ_HOST=banditgames-rabbit
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+
+    volumes:
+      - ./data:/app/data
+      - ./app:/app/app
+      - ./scripts:/app/scripts
+    depends_on:
+      mlflow:
+        condition: service_started
+    networks:
+      - game-ai-network
+      - banditgames-shared-network
+      - banditgames-backend-network
+    restart: unless-stopped
+
+  # RabbitMQ Message Queue (keeping separate for now)
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: game-ai-rabbitmq
+    ports:
+      - "5673:5672"      # AMQP port (changed to avoid conflicts)
+      - "15673:15672"    # Management UI (changed to avoid conflicts)
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - game-ai-network
+    restart: unless-stopped
+
+  # MLFlow Tracking Server
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.8.1
+    container_name: game-ai-mlflow
+    ports:
+      - "5001:5000"  # Changed to avoid conflicts
+    volumes:
+      - mlflow_data:/mlflow
+    networks:
+      - game-ai-network
+    restart: unless-stopped
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000
+
+  # MinIO (optional - for remote data storage with DVC)
+  minio:
+    image: minio/minio:latest
+    container_name: game-ai-minio
+    ports:
+      - "9002:9000"  # Changed to avoid conflicts
+      - "9003:9001"  # Changed to avoid conflicts
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - game-ai-network
+    restart: unless-stopped
+    profiles:
+      - minio  # Only start with --profile minio
+
+volumes:
+  rabbitmq_data:
+  mlflow_data:
+  minio_data:
+
+networks:
+  game-ai-network:
+    driver: bridge
+  banditgames-shared-network:
+    name: banditgames-shared-network
+    external: true
+  banditgames-backend-network:
+    name: banditgames-backend-network
+    external: true
+
+

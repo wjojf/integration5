@@ -1,0 +1,150 @@
+### ML Models API Tests
+
+@baseUrl = http://localhost:8000/api/v1/ml-models
+
+### Health Check
+GET {{baseUrl}}/health
+
+### Get Model Status
+GET {{baseUrl}}/status
+
+### Get Policy Model Info
+GET {{baseUrl}}/info/policy
+
+### Get Win Probability Model Info
+GET {{baseUrl}}/info/winprob
+
+### Predict Policy - Empty Board
+POST {{baseUrl}}/predict/policy
+Content-Type: application/json
+
+{
+  "board_state": {
+    "board": [
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0]
+    ],
+    "current_player": 1,
+    "legal_moves": [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+### Predict Policy - Mid Game
+POST {{baseUrl}}/predict/policy
+Content-Type: application/json
+
+{
+  "board_state": {
+    "board": [
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 1, 0, 0, 0],
+      [0, 0, 2, 1, 0, 0, 0]
+    ],
+    "current_player": 1,
+    "legal_moves": [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+### Predict Policy - Near Win Situation
+POST {{baseUrl}}/predict/policy
+Content-Type: application/json
+
+{
+  "board_state": {
+    "board": [
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 1, 1, 1, 0, 0],
+      [0, 0, 2, 2, 2, 0, 0]
+    ],
+    "current_player": 1,
+    "legal_moves": [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+### Predict Win Probability - Empty Board
+POST {{baseUrl}}/predict/winprob
+Content-Type: application/json
+
+{
+  "board_state": {
+    "board": [
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0]
+    ],
+    "current_player": 1,
+    "legal_moves": [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+### Predict Win Probability - Mid Game
+POST {{baseUrl}}/predict/winprob
+Content-Type: application/json
+
+{
+  "board_state": {
+    "board": [
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 1, 0, 0, 0],
+      [0, 0, 2, 1, 0, 0, 0]
+    ],
+    "current_player": 1,
+    "legal_moves": [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+### Predict Win Probability - Winning Position
+POST {{baseUrl}}/predict/winprob
+Content-Type: application/json
+
+{
+  "board_state": {
+    "board": [
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 1, 1, 1, 0, 0],
+      [0, 0, 2, 2, 2, 0, 0]
+    ],
+    "current_player": 1,
+    "legal_moves": [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+### Predict Win Probability - Losing Position
+POST {{baseUrl}}/predict/winprob
+Content-Type: application/json
+
+{
+  "board_state": {
+    "board": [
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [2, 0, 0, 0, 0, 0, 0],
+      [2, 0, 0, 1, 0, 0, 0],
+      [2, 1, 1, 1, 0, 0, 0]
+    ],
+    "current_player": 1,
+    "legal_moves": [0, 1, 2, 3, 4, 5, 6]
+  }
+}
+
+###
