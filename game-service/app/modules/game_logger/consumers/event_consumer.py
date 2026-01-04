@@ -18,6 +18,14 @@ from ..service import GameLoggerService
 
 logger = logging.getLogger(__name__)
 
+# Try to import GameSessionRepository to get player_ids if needed
+try:
+    from app.modules.games.repositories.session_repository import GameSessionRepository
+    _has_session_repo = True
+except ImportError:
+    _has_session_repo = False
+    GameSessionRepository = None
+
 
 class GameLoggerEventConsumer:
     """Consumer for game logger events (game-agnostic)."""
@@ -28,10 +36,12 @@ class GameLoggerEventConsumer:
 
         self._queue_session_started = "game_logger.session_started"
         self._queue_move_responses = "game_logger.move_responses"
+        self._queue_move_applied = "game_logger.move_applied"
         self._queue_session_ended = "game_logger.session_ended"
 
         self._routing_key_session_started = "game.session.started"
         self._routing_key_move_response = "game.move.response"
+        self._routing_key_move_applied = "game.move.applied"
         self._routing_key_session_ended = "game.session.ended"
 
         self._consuming: bool = False
@@ -70,6 +80,13 @@ class GameLoggerEventConsumer:
 
     def _dict_to_move_response_event(self, data: Dict[str, Any]) -> GameMoveResponseEvent:
         """Convert dictionary to GameMoveResponseEvent."""
+        # Extract valid field (default to True if not provided, as moves are already applied)
+        valid = data.get('valid')
+        if valid is None:
+            # If not explicitly set, assume valid=True for move.response events
+            # (moves that reach this point are already validated and applied)
+            valid = True
+        
         return GameMoveResponseEvent(
             event_id=data.get('eventId', ''),
             game_id=data.get('gameId', ''),
@@ -77,6 +94,7 @@ class GameLoggerEventConsumer:
             player_id=data.get('playerId', ''),
             move=data.get('move', {}),
             new_game_state=data.get('newGameState', {}),
+            valid=valid,
             game_status=data.get('gameStatus', 'ongoing'),
             timestamp=self._parse_timestamp(data.get('timestamp')),
         )
@@ -107,10 +125,12 @@ class GameLoggerEventConsumer:
     def _handle_game_start_event(self, event: GameStartedEvent) -> None:
         """Handle game start event."""
         try:
-            if len(event.player_ids) >= 2:
-                # Use game_id as session_id (for chess games, they are the same)
-                session_id = event.game_id
-                
+            # Use game_id as session_id (for chess games, they are the same)
+            session_id = event.game_id
+            
+            # For chess games, always create session even if player_ids is empty
+            # (player lookup might fail, but we still need to log moves)
+            if event.game_type == "chess" or len(event.player_ids) >= 2:
                 self.game_logger_service.create_session(
                     session_id=session_id,
                     game_type=event.game_type,
@@ -118,7 +138,9 @@ class GameLoggerEventConsumer:
                     p2_type="human",
                     tag=f"lobby_{event.lobby_id}" if event.lobby_id else None,
                 )
-                logger.info(f"Created game session: session_id={session_id}, game_type={event.game_type}, lobby_id={event.lobby_id}")
+                logger.info(f"Created game session: session_id={session_id}, game_type={event.game_type}, lobby_id={event.lobby_id}, player_ids_count={len(event.player_ids)}")
+            else:
+                logger.warning(f"Skipping session creation - insufficient player_ids: game_id={session_id}, game_type={event.game_type}, player_ids_count={len(event.player_ids)}")
         except Exception as e:
             logger.error(f"Failed to create game session: {e}", exc_info=True)
 
@@ -130,7 +152,71 @@ class GameLoggerEventConsumer:
         except Exception as e:
             logger.error(f"Failed to handle move response: {e}", exc_info=True)
 
-    def _handle_move_response_event(self, event: GameMoveResponseEvent) -> None:
+    def _handle_move_applied(self, message: Dict[str, Any]) -> None:
+        """Handle move applied message (for chess and other games where moves are already applied)."""
+        try:
+            # For move.applied events, the structure is similar to move.response
+            # Extract session_id and game_id (support both snake_case and camelCase)
+            # Connect Four uses session_id, chess uses game_id as session_id
+            session_id = message.get("session_id") or message.get("sessionId")
+            game_id = message.get("game_id") or message.get("gameId")
+            
+            # For chess games, game_id is the session_id
+            if not session_id:
+                session_id = game_id
+            
+            # Fallback: use session_id as game_id if game_id not provided
+            if not game_id:
+                game_id = session_id
+            
+            if not game_id:
+                logger.warning(f"Received game.move.applied without game_id or session_id: {message}")
+                return
+            
+            # Extract move data (Connect Four uses "move_data", chess uses "move")
+            move_data = message.get("move_data") or message.get("move", {})
+            if not move_data:
+                logger.warning(f"No move data in game.move.applied: game_id={game_id}, message_keys={list(message.keys())}")
+                return
+            
+            # Extract player_id (support both snake_case and camelCase)
+            player_id = message.get("player_id") or message.get("playerId")
+            if not player_id:
+                # Try to get from move data
+                player_id = move_data.get("playerId") or move_data.get("player_id") or "unknown"
+            
+            # Extract game type
+            game_type = message.get("game_type") or message.get("gameType") or "chess"
+            
+            # Get new game state (from move data or message)
+            # Connect Four uses "game_state", chess uses "newGameState" or "fenAfterMove"
+            new_game_state = message.get("game_state") or message.get("newGameState") or move_data.get("fenAfterMove") or move_data
+            game_status = message.get("status") or message.get("gameStatus") or message.get("game_status") or "ongoing"
+            
+            # For move.applied events, moves are already validated and applied, so valid=True
+            valid = message.get("valid")
+            if valid is None:
+                valid = True  # Moves that reach this point are already applied, so they're valid
+            
+            # Create a move response event-like structure
+            event = GameMoveResponseEvent(
+                event_id=message.get("eventId") or message.get("event_id") or "",
+                game_id=game_id,
+                game_type=game_type,
+                player_id=player_id,
+                move=move_data,
+                new_game_state=new_game_state if isinstance(new_game_state, dict) else {"state": new_game_state},
+                valid=valid,
+                game_status=game_status,
+                timestamp=self._parse_timestamp(message.get("timestamp")),
+            )
+            
+            # Pass session_id explicitly (Connect Four uses session_id, chess uses game_id as session_id)
+            self._handle_move_response_event(event, session_id=session_id)
+        except Exception as e:
+            logger.error(f"Failed to handle move applied: {e}", exc_info=True)
+
+    def _handle_move_response_event(self, event: GameMoveResponseEvent, session_id: Optional[str] = None) -> None:
         """Handle move response event."""
         try:
             game_id = event.game_id
@@ -142,33 +228,44 @@ class GameLoggerEventConsumer:
                 logger.warning(f"No move data: game_id={game_id}")
                 return
 
-            move_index = state_after.get('move_number', 0) if isinstance(state_after, dict) else 0
+            # Use provided session_id, or fallback to game_id (for chess games, they are the same)
+            if not session_id:
+                session_id = game_id
+            
+            # Get move number from state or move data
+            move_number = state_after.get('move_number', 0) if isinstance(state_after, dict) else 0
+            if move_number == 0:
+                move_number = move_data.get('moveNumber', 0) if isinstance(move_data, dict) else 0
+            if move_number == 0:
+                # Fallback: count existing moves + 1
+                existing_moves = self.game_logger_service.get_session_moves(session_id)
+                move_number = len(existing_moves) + 1
 
-            game_logs = self.game_logger_service.get_game_logs(game_id)
-
-            state_before: Dict[str, Any]
-            if game_logs and len(game_logs) > 0:
-                last_log = game_logs[-1]
-                state_before = last_log.state_after if hasattr(last_log, 'state_after') else {}
+            # For chess games, use simplified logging (no ML training data required)
+            if game_type == "chess":
+                self.game_logger_service.log_chess_move(
+                    session_id=session_id,
+                    move_number=move_number,
+                    player_id=event.player_id,
+                    move_data=move_data,
+                    game_state=state_after,
+                    game_status=event.game_status,
+                )
             else:
-                state_before = state_after.copy()
-                if isinstance(state_before, dict):
-                    state_before['move_number'] = 0
-                logger.debug(f"No previous moves found for game: game_id={game_id}, using initial state")
+                # For other games (like Connect Four), use full ML logging
+                # This requires ML training data which may not be available from events
+                logger.warning(f"Full ML logging not supported for game_type={game_type} via events. Use direct API call.")
+                # For now, just log a simplified version
+                self.game_logger_service.log_chess_move(
+                    session_id=session_id,
+                    move_number=move_number,
+                    player_id=event.player_id,
+                    move_data=move_data,
+                    game_state=state_after,
+                    game_status=event.game_status,
+                )
 
-            self.game_logger_service.log_move(
-                game_id=game_id,
-                game_type=game_type,
-                move_index=move_index,
-                player_id=event.player_id,
-                agent_type="human",
-                state_before=state_before,
-                move_data=move_data,
-                state_after=state_after,
-                result=event.game_status,
-            )
-
-            logger.info(f"Logged move: game_id={game_id}, game_type={game_type}, move_index={move_index}")
+            logger.info(f"Logged move: session_id={session_id}, game_type={game_type}, move_number={move_number}")
 
         except Exception as e:
             logger.error(f"Failed to log move: {e}", exc_info=True)
@@ -178,16 +275,67 @@ class GameLoggerEventConsumer:
         try:
             event = self._dict_to_game_ended_event(message)
 
+            # Extract session_id from message (Connect Four uses session_id, chess uses game_id as session_id)
+            # Support both snake_case and camelCase
+            session_id = message.get("session_id") or message.get("sessionId")
+            if not session_id:
+                # For chess games, game_id is the session_id
+                session_id = event.game_id
+            
+            if not session_id:
+                logger.error(f"Cannot determine session_id from game ended event: {message}")
+                return
+
+            # Extract total moves from final_game_state
             final_state = event.final_game_state
             total_moves = final_state.get('move_number', 0) if isinstance(final_state, dict) else 0
+            # Also try total_moves from the message directly
+            if total_moves == 0:
+                total_moves = message.get('total_moves', 0)
 
-            self.game_logger_service.finish_game_session(
-                game_id=event.game_id,
-                final_result=event.game_result,
-                total_moves=total_moves,
+            # Determine winner: 'p1', 'p2', or 'draw'
+            winner = 'draw'
+            if event.winner_id:
+                # Try to get player_ids from message first
+                player_ids = message.get('player_ids') or message.get('playerIds', [])
+                
+                # If not in message, try to get from game session repository
+                if not player_ids and _has_session_repo:
+                    try:
+                        from app.shared.container import container
+                        if container.has(GameSessionRepository):
+                            session_repo = container.get(GameSessionRepository)
+                            game_session = session_repo.find_by_id(session_id)
+                            if game_session and hasattr(game_session, 'player_ids'):
+                                player_ids = game_session.player_ids
+                                logger.debug(f"Retrieved player_ids from game session: {player_ids}")
+                    except Exception as e:
+                        logger.warn(f"Failed to get player_ids from game session: {e}")
+                
+                if len(player_ids) >= 2:
+                    # Map winner_id to p1 or p2 based on player order
+                    if event.winner_id == player_ids[0]:
+                        winner = 'p1'
+                    elif event.winner_id == player_ids[1]:
+                        winner = 'p2'
+                    else:
+                        # Winner not in player list, default to draw
+                        logger.warn(f"Winner ID {event.winner_id} not found in player_ids {player_ids}, defaulting to draw")
+                        winner = 'draw'
+                else:
+                    # No player_ids available, default to draw
+                    logger.warn(f"Cannot determine p1 vs p2 without player_ids for winner_id={event.winner_id}, defaulting to draw")
+                    winner = 'draw'
+
+            # Call finish_session with correct parameters
+            self.game_logger_service.finish_session(
+                session_id=session_id,
+                winner=winner,
+                num_moves=total_moves,
+                end_time=event.timestamp,
             )
 
-            logger.info(f"Finished game session: game_id={event.game_id}, game_type={event.game_type}")
+            logger.info(f"Finished game session: session_id={session_id}, winner={winner}, moves={total_moves}")
 
         except Exception as e:
             logger.error(f"Failed to finish game session: {e}", exc_info=True)
@@ -293,6 +441,57 @@ class GameLoggerEventConsumer:
             except:
                 pass
 
+    def _consume_move_applied(self) -> None:
+        """Consume move applied messages (for chess and other games)."""
+        # Each thread needs its own RabbitMQ client instance (Pika is not thread-safe)
+        from app.shared.messaging.rabbitmq_client import RabbitMQClient
+        client = RabbitMQClient()
+        client.connect()
+
+        max_retries = 5
+        retry_count = 0
+        base_delay = 1.0
+
+        try:
+            while self._consuming and retry_count < max_retries:
+                try:
+                    client.consume_queue(
+                        queue_name=self._queue_move_applied,
+                        routing_key=self._routing_key_move_applied,
+                        callback=self._handle_move_applied,
+                        auto_ack=False
+                    )
+                    # If we get here, consuming stopped normally
+                    break
+                except Exception as e:
+                    retry_count += 1
+                    logger.error(f"Error consuming move applied (attempt {retry_count}/{max_retries}): {e}",
+                                 exc_info=True)
+
+                    if retry_count < max_retries and self._consuming:
+                        # Exponential backoff
+                        delay = base_delay * (2 ** (retry_count - 1))
+                        logger.info(f"Retrying in {delay} seconds...")
+                        import time
+                        time.sleep(delay)
+
+                        # Reconnect
+                        try:
+                            client.disconnect()
+                        except:
+                            pass
+                        client = RabbitMQClient()
+                        client.connect()
+                    else:
+                        logger.error(f"Failed to consume move applied after {max_retries} attempts")
+                        self._consuming = False
+                        break
+        finally:
+            try:
+                client.disconnect()
+            except:
+                pass
+
     def _consume_game_end(self) -> None:
         """Consume game end messages."""
         # Each thread needs its own RabbitMQ client instance (Pika is not thread-safe)
@@ -353,9 +552,10 @@ class GameLoggerEventConsumer:
 
         thread1 = threading.Thread(target=self._consume_game_start, daemon=True)
         thread2 = threading.Thread(target=self._consume_move_responses, daemon=True)
-        thread3 = threading.Thread(target=self._consume_game_end, daemon=True)
+        thread3 = threading.Thread(target=self._consume_move_applied, daemon=True)
+        thread4 = threading.Thread(target=self._consume_game_end, daemon=True)
 
-        self._threads = [thread1, thread2, thread3]
+        self._threads = [thread1, thread2, thread3, thread4]
 
         for thread in self._threads:
             thread.start()

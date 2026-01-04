@@ -4,11 +4,14 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,7 +46,27 @@ public class GatewayHeaderAuthFilter extends OncePerRequestFilter {
 
         GatewayUserPrincipal principal = new GatewayUserPrincipal(userId, username, email);
 
-        PreAuthenticatedAuthenticationToken auth = new PreAuthenticatedAuthenticationToken(principal, "N/A", List.of());
+        // Add ROLE_USER authority so @PreAuthorize("isAuthenticated()") works
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        
+        // Also add any roles from X-User-Roles header if present
+        String rolesHeader = req.getHeader("X-User-Roles");
+        if (rolesHeader != null && !rolesHeader.isEmpty()) {
+            String[] roles = rolesHeader.split(",");
+            for (String role : roles) {
+                String trimmedRole = role.trim();
+                if (!trimmedRole.isEmpty()) {
+                    // Ensure role has ROLE_ prefix
+                    String roleWithPrefix = trimmedRole.startsWith("ROLE_") 
+                        ? trimmedRole 
+                        : "ROLE_" + trimmedRole;
+                    authorities.add(new SimpleGrantedAuthority(roleWithPrefix));
+                }
+            }
+        }
+
+        PreAuthenticatedAuthenticationToken auth = new PreAuthenticatedAuthenticationToken(principal, "N/A", authorities);
         auth.setAuthenticated(true);
         SecurityContextHolder.getContext().setAuthentication(auth);
 

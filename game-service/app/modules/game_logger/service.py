@@ -172,6 +172,58 @@ class GameLoggerService:
             logger.error(f"Failed to get recent moves: {e}", exc_info=True)
             return []
 
+    def log_chess_move(
+        self,
+        session_id: str,
+        move_number: int,
+        player_id: str,
+        move_data: Dict,
+        game_state: Dict,
+        game_status: str = "ongoing",
+    ) -> Optional[Dict]:
+        """
+        Log a chess move with simplified data structure.
+        For chess games, we don't need all the ML training data.
+        """
+        if not settings.LOGGER_ENABLED:
+            return None
+
+        try:
+            # For chess, we store move data in board_state as JSON
+            # Create a simplified structure that works with the existing repository
+            board_state = {
+                "move": move_data,
+                "game_state": game_state,
+                "game_status": game_status,
+            }
+            
+            # Determine current_player based on move data or move number
+            current_player = "p1" if move_number % 2 == 1 else "p2"
+            current_player_id = 1 if move_number % 2 == 1 else 2
+            
+            # For chess, we don't have ML training data, so use defaults
+            # The repository expects these fields, but they're not used for chess
+            result = self.repository.log_move(
+                session_id=session_id,
+                move_number=move_number,
+                current_player=current_player,
+                current_player_id=current_player_id,
+                board_state=board_state,
+                board_flat=[0] * 42,  # Placeholder for Connect Four format
+                legal_moves_mask=[1] * 7,  # Placeholder
+                played_move=0,  # Placeholder
+                expert_policy=[0.0] * 7,  # Placeholder
+                expert_best_move=0,  # Placeholder
+                expert_value=0.5,  # Placeholder
+                final_result=game_status,
+                game_status=game_status,
+            )
+            logger.debug(f"Chess move logged: session={session_id}, move={move_number}")
+            return result
+        except Exception as e:
+            logger.error(f"Failed to log chess move: {e}", exc_info=True)
+            return None
+
     # ==================== STATISTICS ====================
 
     def get_stats(self) -> Dict:

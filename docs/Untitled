@@ -1,0 +1,18 @@
+2026-01-04 14:38:22,551 - app.modules.game_logger.consumers.event_consumer - WARNING - No move data in game.move.applied: game_id=550e8400-e29b-41d4-a716-446655440001
+2026-01-04T14:38:23.825930833Z 2026-01-04 14:38:23,825 - app.modules.game_logger.consumers.event_consumer - WARNING - No move data in game.move.applied: game_id=550e8400-e29b-41d4-a716-446655440001
+2026-01-04T14:38:24.559859667Z 2026-01-04 14:38:24,559 - app.modules.game_logger.consumers.event_consumer - WARNING - No move data in game.move.applied: game_id=550e8400-e29b-41d4-a716-446655440001
+2026-01-04T14:38:26.108146584Z 2026-01-04 14:38:26,107 - app.modules.game_logger.consumers.event_consumer - WARNING - No move data in game.move.applied: game_id=550e8400-e29b-41d4-a716-446655440001
+2026-01-04T14:38:26.802185168Z 2026-01-04 14:38:26,802 - app.modules.game_logger.consumers.event_consumer - WARNING - No move data in game.move.applied: game_id=550e8400-e29b-41d4-a716-446655440001
+2026-01-04T14:38:31.931333671Z 2026-01-04 14:38:31,931 - app.modules.game_logger.consumers.event_consumer - WARNING - No move data in game.move.applied: game_id=550e8400-e29b-41d4-a716-446655440001
+2026-01-04T14:38:31.956128421Z 2026-01-04 14:38:31,955 - app.modules.game_logger.consumers.event_consumer - WARNING - Cannot determine p1 vs p2 without player_ids for winner_id=c81f4073-b310-49ae-b63f-f01929a1bcfa, defaulting to draw
+2026-01-04T14:38:31.959316046Z 2026-01-04 14:38:31,959 - app.modules.game_logger.repositories.game_log_repository - ERROR - Failed to finish session : Session  not found
+2026-01-04T14:38:31.959922462Z 2026-01-04 14:38:31,959 - app.modules.game_logger.repositories.game_log_repository - ERROR - Session rollback due to error: Session  not found
+2026-01-04T14:38:31.962348337Z 2026-01-04 14:38:31,959 - app.modules.game_logger.service - ERROR - Failed to finish session: Session  not found
+2026-01-04T14:38:31.962547796Z Traceback (most recent call last):
+2026-01-04T14:38:31.962577671Z   File "/app/app/modules/game_logger/service.py", line 74, in finish_session
+2026-01-04T14:38:31.962581712Z     result = self.repository.finish_session(
+2026-01-04T14:38:31.962583754Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-01-04T14:38:31.962611004Z   File "/app/app/modules/game_logger/repositories/game_log_repository.py", line 165, in finish_session
+2026-01-04T14:38:31.962613921Z     raise ValueError(f"Session {session_id} not found")
+2026-01-04T14:38:31.962615962Z ValueError: Session  not found
+2026-01-04T14:38:31.962617671Z 2026-01-04 14:38:31,962 - app.modules.game_logger.consumers.event_consumer - INFO - Finished game session: session_id=, winner=draw, moves=7

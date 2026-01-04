@@ -1,0 +1,94 @@
+@startuml BanditGames System Architecture
+
+!theme plain
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 12
+skinparam defaultFontName Arial
+skinparam roundcorner 15
+skinparam shadowing false
+
+title BanditGames Platform - System Architecture
+
+' ============================================
+' CLIENTS
+' ============================================
+rectangle "Clients" #E3F2FD {
+  component [Web Browser\nReact] as WebClient
+  component [Mobile App] as MobileClient
+}
+
+' ============================================
+' API GATEWAY
+' ============================================
+rectangle "API Gateway" #FFF3E0 {
+  component [API Gateway\nSpring Cloud Gateway] as Gateway
+}
+
+' ============================================
+' APPLICATION SERVICES
+' ============================================
+rectangle "Application Services" #E8F5E9 {
+  component [Platform Backend\nSpring Boot\n\n• Lobbies\n• Friends\n• Chat\n• Achievements] as PlatformBackend
+
+  component [Game Service\nFastAPI\n\n• Game Engine\n• AI Player\n• ML Models\n• Chatbot] as GameService
+}
+
+' ============================================
+' EXTERNAL SERVICES
+' ============================================
+rectangle "External Services" #F3E5F5 {
+  component [Chess Game] as ChessGame
+  component [Keycloak\nSSO] as Keycloak
+  component [OpenAI API] as OpenAI
+  component [MLflow] as MLflow
+}
+
+' ============================================
+' INFRASTRUCTURE
+' ============================================
+rectangle "Infrastructure" #FFF9C4 {
+  database "PostgreSQL" as PostgreSQL
+  component [RabbitMQ\nMessage Broker] as RabbitMQ
+  component [Redis\nCache] as Redis
+}
+
+' ============================================
+' COMMUNICATION FLOWS
+' ============================================
+
+WebClient --> Gateway : REST / WebSocket
+MobileClient --> Gateway : REST
+
+Gateway --> PlatformBackend : REST API
+Gateway --> GameService : REST API
+Gateway --> ChessGame : REST API
+
+Gateway --> Keycloak : OAuth2/JWT
+Gateway --> Redis : Rate Limiting
+
+PlatformBackend --> PostgreSQL
+PlatformBackend --> RabbitMQ
+PlatformBackend --> Keycloak
+
+GameService --> PostgreSQL
+GameService --> RabbitMQ
+GameService --> OpenAI
+GameService --> MLflow
+
+ChessGame --> PostgreSQL
+ChessGame --> RabbitMQ
+
+RabbitMQ ..> PlatformBackend : Events
+RabbitMQ ..> GameService : Events
+
+legend right
+  |= **Communication** |
+  | REST API | Synchronous |
+  | WebSocket | Real-time |
+  | RabbitMQ | Async Events |
+endlegend
+
+@enduml
+

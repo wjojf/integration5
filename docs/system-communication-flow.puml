@@ -1,0 +1,89 @@
+@startuml Chess Game Start Flow - Communication Sequence
+
+title Chess Game Start Flow\nCommunication Sequence Diagram
+
+skinparam sequenceMessageAlign center
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 10
+
+actor User as user
+participant "Web Browser\n(React)" as frontend
+participant "API Gateway\n(Spring Cloud Gateway)" as gateway
+participant "Platform Backend\n(Spring Boot)" as platform
+participant "RabbitMQ\n(Message Broker)" as rabbitmq
+participant "Game Service\n(FastAPI)" as gameservice
+participant "Chess Backend\n(Spring Boot)" as chessbackend
+participant "Chess Frontend\n(React)" as chessfrontend
+database "PostgreSQL" as db
+
+== User Starts Chess Lobby ==
+
+user -> frontend: Click "Start Chess Game"
+frontend -> gateway: POST /api/platform/lobbies/{id}/start\n(JWT Token)
+gateway -> gateway: Validate JWT (Keycloak)
+gateway -> platform: POST /api/platform/lobbies/{id}/start\n(X-API-Key)
+
+platform -> db: Update lobby status to STARTED
+platform -> rabbitmq: Publish game.session.start.requested\n{lobby_id, game_id, player_ids, game_type: chess}
+
+== Game Service Creates Session ==
+
+rabbitmq -> gameservice: Consume game.session.start.requested
+gameservice -> gameservice: Create minimal chess session\n(chess is external, no game factory)
+gameservice -> db: Store session (game_service DB)
+gameservice -> rabbitmq: Publish game.session.started\n{session_id, lobby_id, game_type: chess}
+
+== Platform Backend Updates Lobby ==
+
+rabbitmq -> platform: Consume game.session.started
+platform -> db: Update lobby with session_id\nSet status to IN_PROGRESS
+
+== Chess Backend Creates Game ==
+
+platform -> rabbitmq: Publish game.session.start.requested\n(to chess backend via ACL)
+rabbitmq -> chessbackend: Consume game session event
+chessbackend -> chessbackend: Create chess game instance
+chessbackend -> db: Store chess game (postgres DB)
+chessbackend -> rabbitmq: Publish game.created\n{gameId, whitePlayerId, blackPlayerId}
+
+== ACL Transforms and Updates ==
+
+rabbitmq -> platform: Consume game.created (external format)
+platform -> platform: ACL Transform\ngame.created → game.session.started
+platform -> db: Store external_game_instance\n{lobby_id, external_game_instance_id}
+platform -> rabbitmq: Publish game.session.started\n(platform format)
+
+== Frontend Redirects to Chess UI ==
+
+rabbitmq -> platform: Event processed
+frontend -> gateway: GET /api/platform/lobbies/{id}/external-game-instance\n(Polling every 2s)
+gateway -> platform: GET /api/platform/lobbies/{id}/external-game-instance
+platform -> gateway: {externalGameInstanceId, hasExternalGameInstance: true}
+gateway -> frontend: Return external game instance data
+frontend -> frontend: Detect externalGameInstanceId available
+frontend -> chessfrontend: window.location.href = /game/{externalGameInstanceId}\n(Redirect)
+
+== User Plays Chess ==
+
+user -> chessfrontend: Make chess move
+chessfrontend -> gateway: POST /api/games/{gameId}/moves\n(Direct route to chess backend)
+gateway -> chessbackend: POST /api/games/{gameId}/moves
+chessbackend -> db: Validate and apply move
+chessbackend -> rabbitmq: Publish move.made\n{gameId, move, gameState}
+rabbitmq -> platform: Consume move.made
+platform -> platform: ACL Transform\nmove.made → game.move.applied
+platform -> rabbitmq: Publish game.move.applied\n(platform format)
+rabbitmq -> gameservice: Consume game.move.applied\n(Game Logger logs the move)
+
+== Game Ends ==
+
+chessbackend -> rabbitmq: Publish game.ended\n{gameId, winnerId, finalState}
+rabbitmq -> platform: Consume game.ended
+platform -> platform: ACL Transform\ngame.ended → game.session.ended
+platform -> db: Update lobby status to COMPLETED
+platform -> rabbitmq: Publish game.session.ended\n{session_id, winner_id, status: finished}
+rabbitmq -> platform: Consume game.session.ended\n(Achievement evaluation)
+rabbitmq -> gameservice: Consume game.session.ended\n(Game Logger finishes session)
+
+@enduml
+

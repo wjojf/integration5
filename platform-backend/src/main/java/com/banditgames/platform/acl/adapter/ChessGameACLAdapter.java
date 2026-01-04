@@ -57,6 +57,9 @@ public class ChessGameACLAdapter {
     @Value("${game.events.routing-keys.move-request:game.move.request}")
     private String moveRequestRoutingKey;
 
+    @Value("${game.events.routing-keys.move-applied:game.move.applied}")
+    private String moveAppliedRoutingKey;
+
     @Value("${game.events.routing-keys.session-ended:game.session.ended}")
     private String sessionEndedRoutingKey;
 
@@ -306,11 +309,20 @@ public class ChessGameACLAdapter {
             moveData.put("playerId", playerId != null ? playerId.toString() : "unknown");
             moveData.put("moveNumber", message.getMoveNumber() != null ? message.getMoveNumber() : 0);
             gameServiceEvent.put("move", moveData);
-            gameServiceEvent.put("type", "GAME_MOVE_REQUEST");
+            gameServiceEvent.put("type", "GAME_MOVE_APPLIED");
+            // For chess, moves are already applied by external service, so publish directly to move.applied
+            // This allows game logger and websocket consumers to process the move
+            // Create proper game state structure
+            Map<String, Object> newGameState = new HashMap<>();
+            newGameState.put("fen", message.getFenAfterMove() != null ? message.getFenAfterMove() : "");
+            newGameState.put("move_number", message.getMoveNumber() != null ? message.getMoveNumber() : 0);
+            newGameState.put("current_player", message.getPlayer() != null ? message.getPlayer() : "");
+            gameServiceEvent.put("newGameState", newGameState);
+            gameServiceEvent.put("gameStatus", "ongoing");
 
             rabbitTemplate.convertAndSend(
                 gameServiceExchange,
-                moveRequestRoutingKey,
+                moveAppliedRoutingKey,
                 gameServiceEvent
             );
 

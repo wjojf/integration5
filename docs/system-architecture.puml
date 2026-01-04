@@ -1,0 +1,254 @@
+@startuml BanditGames System Architecture
+
+!define RECTANGLE class
+
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 10
+skinparam defaultFontName Arial
+
+title BanditGames Platform - System Architecture\n\nTechnologies, Services, and Communication Patterns
+
+' ============================================
+' EXTERNAL USERS & CLIENTS
+' ============================================
+package "External Clients" #E8F4F8 {
+  component [Web Browser\nReact + TypeScript] as WebClient
+  component [Mobile App] as MobileClient
+  note right of WebClient
+    **Technologies:**
+    - React 18
+    - TypeScript
+    - TanStack Query
+    - STOMP.js / SockJS
+    - Keycloak.js
+  end note
+}
+
+' ============================================
+' API GATEWAY LAYER
+' ============================================
+package "API Gateway Layer" #FFF4E6 {
+  component [API Gateway\nSpring Cloud Gateway\nPort: 8080] as Gateway
+  note right of Gateway
+    **Technologies:**
+    - Spring Cloud Gateway 3.x
+    - Java 21
+    - Resilience4j (Circuit Breaker)
+    - Spring Security OAuth2
+    
+    **Features:**
+    - JWT Authentication (Keycloak)
+    - Rate Limiting (Redis)
+    - Request Routing
+    - ACL Transformation
+    - CORS Handling
+  end note
+}
+
+' ============================================
+' APPLICATION SERVICES
+' ============================================
+package "Application Services" #E8F5E9 {
+  component [Platform Backend\nSpring Boot 3.x\nPort: 8081] as PlatformBackend
+  note right of PlatformBackend
+    **Technologies:**
+    - Spring Boot 3.x
+    - Java 21
+    - Spring Modulith
+    - Hexagonal Architecture
+    - PostgreSQL (JPA/Hibernate)
+    - RabbitMQ (Spring AMQP)
+    - WebSocket (STOMP/SockJS)
+    
+    **Modules:**
+    - Lobbies
+    - Friends
+    - Chat
+    - Achievements
+    - Game Registry
+    - ACL Adapters
+  end note
+
+  component [Game Service\nFastAPI\nPort: 8000] as GameService
+  note right of GameService
+    **Technologies:**
+    - Python 3.11+
+    - FastAPI
+    - PostgreSQL (SQLAlchemy)
+    - RabbitMQ (Pika)
+    - WebSocket (FastAPI)
+    
+    **Modules:**
+    - Game Engine (Connect Four)
+    - AI Player (MCTS)
+    - ML Models
+    - Chatbot (RAG)
+    - Game Logger
+  end note
+
+  component [Game Service Consumer\nPython Consumer\nBackground Process] as GameConsumer
+  note right of GameConsumer
+    **Purpose:**
+    - Consumes RabbitMQ events
+    - Processes game events
+    - Handles game logging
+  end note
+}
+
+' ============================================
+' EXTERNAL SERVICES
+' ============================================
+package "External Services" #F3E5F5 {
+  component [Chess Game Backend\nSpring Boot\nPort: 8090] as ChessBackend
+  note right of ChessBackend
+    **External Service:**
+    - Pre-built image from GitLab
+    - Spring Boot
+    - Own database schema
+    - Publishes events to RabbitMQ
+  end note
+
+  component [Chess Game Frontend\nReact\nPort: 3333] as ChessFrontend
+  note right of ChessFrontend
+    **External Service:**
+    - Pre-built image from GitLab
+    - React application
+    - Connects to Chess Backend
+  end note
+
+  component [Keycloak\nIdentity Provider\nPort: 8180] as Keycloak
+  note right of Keycloak
+    **Technologies:**
+    - Keycloak (latest)
+    - OAuth2 / OIDC
+    - JWT Tokens
+    - SSO Authentication
+  end note
+
+  component [OpenAI API\nExternal API] as OpenAI
+  note right of OpenAI
+    **Usage:**
+    - Chatbot LLM (GPT-4o-mini)
+    - RAG-based responses
+    - Game assistance queries
+  end note
+
+  component [MLflow\nExperiment Tracking\nPort: 5000] as MLflow
+  note right of MLflow
+    **Technologies:**
+    - MLflow v2.8.1
+    - SQLite backend
+    - Artifact storage
+    - Model versioning
+  end note
+
+  component [MinIO\nObject Storage\nPort: 9000/9001] as MinIO
+  note right of MinIO
+    **Usage:**
+    - DVC remote storage
+    - Dataset versioning
+    - ML artifact storage
+  end note
+}
+
+' ============================================
+' INFRASTRUCTURE SERVICES
+' ============================================
+package "Infrastructure Services" #FFF9C4 {
+  database "PostgreSQL 16\nPort: 5432" as PostgreSQL {
+    component [banditgames\ndatabase] as DBPlatform
+    component [game_service\ndatabase] as DBGame
+    component [keycloak\ndatabase] as DBKeycloak
+    component [postgres\ndatabase\n(Chess)] as DBChess
+  }
+
+  component [RabbitMQ 3\nMessage Broker\nPort: 5672/15672] as RabbitMQ
+  note right of RabbitMQ
+    **Exchanges:**
+    - game_events (topic)
+    - gameExchange (topic)
+    
+    **Events:**
+    - game.session.start.requested
+    - game.session.started
+    - game.move.applied
+    - game.session.ended
+    - game.created (chess)
+    - move.made (chess)
+    - game.ended (chess)
+  end note
+
+  component [Redis 7\nCache & Rate Limiting\nPort: 6379] as Redis
+  note right of Redis
+    **Usage:**
+    - API Gateway rate limiting
+    - Caching
+    - Session storage
+  end note
+}
+
+' ============================================
+' COMMUNICATION PATTERNS
+' ============================================
+
+' Client to Gateway
+WebClient --> Gateway : HTTPS/REST\nJWT Token
+MobileClient --> Gateway : HTTPS/REST\nJWT Token
+WebClient --> Gateway : WebSocket\nSTOMP/SockJS
+
+' Gateway to Services
+Gateway --> PlatformBackend : REST\n(with API Key)
+Gateway --> GameService : REST\n(with API Key)
+Gateway --> ChessBackend : REST\n(ACL Transform)
+
+' Gateway to External Services
+Gateway --> Keycloak : OAuth2/OIDC\nJWT Validation
+Gateway --> Redis : Rate Limiting\nCache
+
+' Platform Backend Communications
+PlatformBackend --> PostgreSQL : JDBC\n(DBPlatform)
+PlatformBackend --> RabbitMQ : AMQP\n(Publish/Consume Events)
+PlatformBackend --> Keycloak : OAuth2\n(JWT Validation)
+PlatformBackend --> Gateway : WebSocket\n(STOMP/SockJS)
+
+' Game Service Communications
+GameService --> PostgreSQL : SQLAlchemy\n(DBGame)
+GameService --> RabbitMQ : Pika\n(Publish/Consume Events)
+GameService --> OpenAI : HTTPS/REST\n(API Key)
+GameService --> MLflow : REST API\n(Experiment Tracking)
+GameService --> MinIO : S3 API\n(Dataset Storage)
+
+' Game Consumer
+GameConsumer --> PostgreSQL : SQLAlchemy\n(DBGame)
+GameConsumer --> RabbitMQ : Pika\n(Consume Events)
+GameConsumer --> PlatformBackend : REST\n(Platform Backend URL)
+
+' Chess Backend Communications
+ChessBackend --> PostgreSQL : JDBC\n(DBChess)
+ChessBackend --> RabbitMQ : AMQP\n(Publish Events)
+
+' Chess Frontend
+ChessFrontend --> ChessBackend : REST API
+ChessFrontend --> Keycloak : OAuth2\n(Authentication)
+
+' Keycloak
+Keycloak --> PostgreSQL : JDBC\n(DBKeycloak)
+
+' RabbitMQ Event Flows
+RabbitMQ ..> PlatformBackend : game.session.started\ngame.move.applied\ngame.session.ended
+RabbitMQ ..> GameService : game.session.start.requested
+RabbitMQ ..> GameConsumer : All game events
+RabbitMQ ..> ChessBackend : game.registered\n(if needed)
+
+' WebSocket Connections
+Gateway ..> WebClient : Real-time Updates\n(STOMP Messages)
+PlatformBackend ..> WebClient : Chat Messages\nLobby Updates
+
+' External API Calls
+GameService ..> OpenAI : Chatbot Queries\n(GPT-4o-mini)
+GameService ..> MLflow : Log Experiments\nTrack Models
+
+@enduml
+

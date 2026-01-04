@@ -1,6 +1,9 @@
 package com.banditgames.platform.acl.adapter.messaging;
 
+import com.banditgames.platform.lobby.domain.Lobby;
 import com.banditgames.platform.lobby.domain.events.LobbyStartedEvent;
+import com.banditgames.platform.lobby.domain.events.PlayerJoinedLobbyEvent;
+import com.banditgames.platform.lobby.port.out.LoadLobbyPort;
 import com.banditgames.platform.lobby.service.ExternalGameInstanceService;
 import com.banditgames.platform.player.domain.Player;
 import com.banditgames.platform.player.port.out.LoadPlayerPort;
@@ -26,13 +29,12 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Handles chess game creation when a lobby is started for a chess game.
+ * Handles chess game creation and player preregistration for chess lobbies.
  * 
  * Flow:
- * 1. LobbyStartedEvent is published
- * 2. This handler checks if it's a chess game
- * 3. If chess: Registers game, creates chess game with both players, publishes event
- * 4. Frontend receives event and redirects both players to same chess game
+ * 1. When second player joins chess lobby: Preregister players via PUT /api/games/{gameId}
+ * 2. When lobby starts: Use existing chess game, publish session start event
+ * 3. Frontend receives event and redirects both players to same chess game
  */
 @Slf4j
 @Component
@@ -40,6 +42,7 @@ import java.util.UUID;
 public class ChessGameLobbyHandler {
 
     private final LoadPlayerPort loadPlayerPort;
+    private final LoadLobbyPort loadLobbyPort;
     private final ExternalGameInstanceService externalGameInstanceService;
     private final RestTemplate restTemplate;
     private final RabbitTemplate rabbitTemplate;
@@ -57,7 +60,68 @@ public class ChessGameLobbyHandler {
     private String gameEventsExchange;
     
     /**
-     * Listens to LobbyStartedEvent and handles chess game creation if applicable.
+     * Listens to PlayerJoinedLobbyEvent and preregisters players for chess games when lobby becomes full.
+     * Only for chess games!
+     */
+    @EventListener
+    public void onPlayerJoinedLobby(PlayerJoinedLobbyEvent event) {
+        try {
+            Lobby lobby = loadLobbyPort.findById(event.lobbyId())
+                    .orElse(null);
+            
+            if (lobby == null || lobby.getGameId() == null) {
+                return; // Lobby not found or no game selected yet
+            }
+            
+            // Only handle chess games
+            if (!isChessGame(lobby.getGameId())) {
+                return;
+            }
+            
+            // Check if lobby is now full (2 players for chess)
+            if (lobby.getPlayerIds().size() == 2 && lobby.getStatus().name().equals("WAITING")) {
+                log.info("Chess lobby is full - preregistering players - lobbyId={}, players={}", 
+                        event.lobbyId(), lobby.getPlayerIds());
+                
+                UUID player1Id = lobby.getPlayerIds().get(0);
+                UUID player2Id = lobby.getPlayerIds().get(1);
+                
+                // Load player information
+                Player player1 = loadPlayerPort.findById(player1Id)
+                        .orElseThrow(() -> new RuntimeException("Player 1 not found: " + player1Id));
+                Player player2 = loadPlayerPort.findById(player2Id)
+                        .orElseThrow(() -> new RuntimeException("Player 2 not found: " + player2Id));
+                
+                // Generate chess game ID (this will be the actual chess game instance ID)
+                UUID chessGameId = UUID.randomUUID();
+                
+                // 1. Register chess game with platform
+                registerChessGame(chessGameId, event.lobbyId());
+                
+                // 2. Preregister players in chess backend using PUT
+                preregisterPlayersInChessBackend(chessGameId, player1, player2);
+                
+                // 3. Store external game instance mapping for frontend to retrieve
+                externalGameInstanceService.storeExternalGameInstance(
+                        event.lobbyId(), 
+                        lobby.getGameId(), 
+                        "chess", 
+                        chessGameId
+                );
+                
+                log.info("Preregistered chess players - lobbyId={}, chessGameId={}, players=[{}, {}]",
+                        event.lobbyId(), chessGameId, player1.getUsername(), player2.getUsername());
+            }
+            
+        } catch (Exception e) {
+            log.error("Failed to preregister chess players - lobbyId={}", event.lobbyId(), e);
+            // Don't throw - allow player to join even if preregistration fails
+        }
+    }
+    
+    /**
+     * Listens to LobbyStartedEvent and handles chess game session creation if applicable.
+     * Uses the preregistered chess game if it exists.
      */
     @EventListener
     public void onLobbyStarted(LobbyStartedEvent event) {
@@ -86,27 +150,36 @@ public class ChessGameLobbyHandler {
             Player player2 = loadPlayerPort.findById(player2Id)
                     .orElseThrow(() -> new RuntimeException("Player 2 not found: " + player2Id));
             
-            // Generate chess game ID (this will be the actual chess game instance ID)
-            UUID chessGameId = UUID.randomUUID();
+            // Check if chess game was already preregistered
+            UUID chessGameId = externalGameInstanceService.getExternalGameInstanceId(event.lobbyId());
             
-            // 1. Register chess game with platform
-            registerChessGame(chessGameId, event.lobbyId());
+            if (chessGameId == null) {
+                // Chess game wasn't preregistered, create it now
+                chessGameId = UUID.randomUUID();
+                
+                // 1. Register chess game with platform
+                registerChessGame(chessGameId, event.lobbyId());
+                
+                // 2. Store external game instance mapping
+                externalGameInstanceService.storeExternalGameInstance(
+                        event.lobbyId(), 
+                        event.gameId(), 
+                        "chess", 
+                        chessGameId
+                );
+            } else {
+                log.info("Using preregistered chess game - lobbyId={}, chessGameId={}", 
+                        event.lobbyId(), chessGameId);
+            }
             
-            // 2. Create chess game in chess backend with both players
+            // Always create/activate the chess game in backend when lobby starts
+            // This ensures the game has the correct player IDs and names
             createChessGameInBackend(chessGameId, player1, player2);
-            
-            // 3. Store external game instance mapping for frontend to retrieve
-            externalGameInstanceService.storeExternalGameInstance(
-                    event.lobbyId(), 
-                    event.gameId(), 
-                    "chess", 
-                    chessGameId
-            );
             
             // 4. Publish game.session.start.requested event to create session in game-service
             publishGameSessionStartRequested(chessGameId, event.lobbyId(), event.gameId(), player1, player2);
             
-            log.info("Chess game created successfully - lobbyId={}, chessGameId={}, players=[{}, {}]",
+            log.info("Chess game session started - lobbyId={}, chessGameId={}, players=[{}, {}]",
                     event.lobbyId(), chessGameId, player1.getUsername(), player2.getUsername());
             
         } catch (Exception e) {
@@ -204,7 +277,43 @@ public class ChessGameLobbyHandler {
     }
     
     /**
-     * Creates the chess game in the chess backend with both players.
+     * Preregisters players in chess backend using PUT /api/games/{gameId}.
+     * Called when lobby becomes full (2 players) but before game starts.
+     */
+    private void preregisterPlayersInChessBackend(UUID chessGameId, Player player1, Player player2) {
+        try {
+            String preregisterUrl = chessGameServiceUrl + "/api/games/" + chessGameId;
+            
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("whitePlayerId", player1.getPlayerId().toString());
+            requestBody.put("whitePlayerName", player1.getUsername());
+            requestBody.put("blackPlayerId", player2.getPlayerId().toString());
+            requestBody.put("blackPlayerName", player2.getUsername());
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    preregisterUrl,
+                    HttpMethod.PUT,
+                    request,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            
+            log.info("Preregistered chess players in backend - chessGameId={}, response={}", 
+                    chessGameId, response.getStatusCode());
+            
+        } catch (Exception e) {
+            log.error("Failed to preregister chess players in backend - chessGameId={}", chessGameId, e);
+            throw e;
+        }
+    }
+    
+    /**
+     * Creates/activates the chess game in the chess backend with both players.
+     * Always called when lobby starts to ensure the game has the correct player IDs and names.
+     * Sends POST /api/games/{gameId} with player information.
      */
     private void createChessGameInBackend(UUID chessGameId, Player player1, Player player2) {
         try {

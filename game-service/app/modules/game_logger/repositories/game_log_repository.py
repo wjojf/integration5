@@ -94,6 +94,12 @@ class GameLogRepository:
 
         with self.get_session() as db_session:
             try:
+                # Check if session already exists (idempotent creation)
+                existing = db_session.query(SessionLogModel).filter_by(session_id=session_id).first()
+                if existing:
+                    logger.info(f"Session already exists: {session_id}, returning existing session")
+                    return SessionLogMapper.to_dict(existing)
+                
                 session_model = SessionLogMapper.to_orm(
                     session_id=session_id,
                     game_type=game_type,
@@ -113,6 +119,16 @@ class GameLogRepository:
                 logger.info(f"Session created: {session_id}")
                 return result
             except Exception as e:
+                # If duplicate key error, try to get existing session
+                from sqlalchemy.exc import IntegrityError
+                if isinstance(e, IntegrityError) and "duplicate key" in str(e).lower():
+                    logger.warning(f"Session {session_id} already exists (duplicate key), retrieving existing session")
+                    try:
+                        existing = db_session.query(SessionLogModel).filter_by(session_id=session_id).first()
+                        if existing:
+                            return SessionLogMapper.to_dict(existing)
+                    except Exception as e2:
+                        logger.error(f"Failed to retrieve existing session {session_id}: {e2}")
                 logger.error(f"Failed to create session {session_id}: {e}")
                 raise
 

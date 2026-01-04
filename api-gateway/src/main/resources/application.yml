@@ -19,6 +19,14 @@ spring:
           predicates:
             - Path=/api/games/**
           filters:
+            # Remove CORS headers from chess backend to avoid duplicates
+            # Gateway's global CORS will handle CORS headers
+            - RemoveResponseHeader=Access-Control-Allow-Origin
+            - RemoveResponseHeader=Access-Control-Allow-Methods
+            - RemoveResponseHeader=Access-Control-Allow-Headers
+            - RemoveResponseHeader=Access-Control-Allow-Credentials
+            - RemoveResponseHeader=Access-Control-Expose-Headers
+            - RemoveResponseHeader=Access-Control-Max-Age
             - name: CircuitBreaker
               args:
                 name: chessGameService
@@ -29,6 +37,14 @@ spring:
           predicates:
             - Path=/api/moves/**
           filters:
+            # Remove CORS headers from chess backend to avoid duplicates
+            # Gateway's global CORS will handle CORS headers
+            - RemoveResponseHeader=Access-Control-Allow-Origin
+            - RemoveResponseHeader=Access-Control-Allow-Methods
+            - RemoveResponseHeader=Access-Control-Allow-Headers
+            - RemoveResponseHeader=Access-Control-Allow-Credentials
+            - RemoveResponseHeader=Access-Control-Expose-Headers
+            - RemoveResponseHeader=Access-Control-Max-Age
             - name: CircuitBreaker
               args:
                 name: chessGameService
@@ -82,6 +98,7 @@ spring:
               args:
                 redis-rate-limiter.replenishRate: 100
                 redis-rate-limiter.burstCapacity: 200
+                redis-rate-limiter.requestedTokens: 1
                 key-resolver: "#{@userKeyResolver}"
             - name: CircuitBreaker
               args:
@@ -105,6 +122,7 @@ spring:
               args:
                 redis-rate-limiter.replenishRate: 200
                 redis-rate-limiter.burstCapacity: 400
+                redis-rate-limiter.requestedTokens: 1
                 key-resolver: "#{@userKeyResolver}"
             - name: CircuitBreaker
               args:
@@ -128,6 +146,19 @@ spring:
           filters:
             # Transform /api/external/chess/games/{gameId} to /api/games/{gameId} (external chess service format)
             - RewritePath=/api/external/chess/games/(?<gameId>[^/]+), /api/games/$\\{gameId}
+            # Remove CORS headers from chess backend to avoid duplicates
+            - RemoveResponseHeader=Access-Control-Allow-Origin
+            - RemoveResponseHeader=Access-Control-Allow-Methods
+            - RemoveResponseHeader=Access-Control-Allow-Headers
+            - RemoveResponseHeader=Access-Control-Allow-Credentials
+            - RemoveResponseHeader=Access-Control-Expose-Headers
+            - RemoveResponseHeader=Access-Control-Max-Age
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
             - name: ACLTransformFilter
               args:
                 enabled: true
@@ -137,29 +168,6 @@ spring:
                 name: chessGameService
                 fallbackUri: forward:/fallback/chess
 
-        # Direct Chess Game API Routes (for chess frontend)
-        # Routes /api/games/** and /api/moves/** directly to chess backend
-        # This allows the chess frontend to call the gateway directly
-        # Note: Must be before the game-service route to avoid conflicts
-        - id: chess-game-direct-games
-          uri: ${CHESS_GAME_SERVICE_URL:http://localhost:8080}
-          predicates:
-            - Path=/api/games/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: chessGameService
-                fallbackUri: forward:/fallback/chess
-
-        - id: chess-game-direct-moves
-          uri: ${CHESS_GAME_SERVICE_URL:http://localhost:8080}
-          predicates:
-            - Path=/api/moves/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: chessGameService
-                fallbackUri: forward:/fallback/chess
 
         # External Games (ACL) - Chess Game Moves
         - id: external-chess-game-moves
@@ -169,6 +177,19 @@ spring:
           filters:
             # Transform /api/external/chess/moves/{gameId} to /api/moves/{gameId} (external chess service format)
             - RewritePath=/api/external/chess/moves/(?<gameId>[^/]+), /api/moves/$\\{gameId}
+            # Remove CORS headers from chess backend to avoid duplicates
+            - RemoveResponseHeader=Access-Control-Allow-Origin
+            - RemoveResponseHeader=Access-Control-Allow-Methods
+            - RemoveResponseHeader=Access-Control-Allow-Headers
+            - RemoveResponseHeader=Access-Control-Allow-Credentials
+            - RemoveResponseHeader=Access-Control-Expose-Headers
+            - RemoveResponseHeader=Access-Control-Max-Age
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 200
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
             - name: ACLTransformFilter
               args:
                 enabled: true
@@ -191,6 +212,12 @@ spring:
             - name: GenerateGameIdFilter
               args:
                 enabled: true
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
             - name: CircuitBreaker
               args:
                 name: platformBackend
@@ -203,6 +230,12 @@ spring:
             - Path=/api/external/**
           filters:
             - StripPrefix=2
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
             - name: ACLTransformFilter
               args:
                 enabled: true
