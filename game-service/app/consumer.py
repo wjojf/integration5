@@ -40,10 +40,15 @@ try:
     
     if settings.MODULE_GAMES_ENABLED:
         # Ensure games module is set up (registers services in container)
-        # Note: setup_module() also starts a consumer, but we'll create our own
-        # to have better control over lifecycle management
+        # Note: setup_module() also starts a session consumer, but we'll create our own
+        # to have better control over lifecycle management.
+        # IMPORTANT: We pass start_websocket_consumer=False because the WebSocket consumer
+        # should ONLY run in the main FastAPI process where WebSocket clients connect.
+        # Running it here would cause a race condition - both processes would compete
+        # for the same queue, and messages consumed by this process would be lost
+        # since there are no WebSocket clients connected here.
         from app.modules.games import setup_module
-        setup_module()  # This registers GameSessionService in container and starts its own consumer
+        setup_module(start_websocket_consumer=False)  # Don't start WS consumer in consumer process
         
         # Get GameSessionService from DI container
         # We create our own consumer instance for better lifecycle control

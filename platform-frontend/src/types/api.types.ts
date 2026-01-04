@@ -54,6 +54,8 @@ export interface InviteToLobbyRequest {
 export interface LobbySearchParams {
   gameId?: string;
   username?: string;
+  page?: number;
+  size?: number;
 }
 
 export interface SendMessageRequest {

@@ -28,12 +28,12 @@ export const GamePage = () => {
 
   // Check if this is an AI game (route: /app/game/ai/:sessionId)
   const isAIGame = location.pathname.includes('/game/ai/');
-  
+
   const { data: lobby, isLoading: isLoadingLobby, refetch: refetchLobby } = useLobbyById(lobbyId || '');
-  
+
   // Check if this is a chess game - if so, redirect to lobby detail page which has embedded chess UI
   const isChessGame = lobby?.gameId === CHESS_GAME_ID;
-  
+
   // Redirect chess games to lobby detail page (which has embedded chess UI)
   useEffect(() => {
     if (!isAIGame && lobbyId && isChessGame) {
@@ -48,7 +48,7 @@ export const GamePage = () => {
   const [aiSession, setAiSession] = useState<GameSession | null>(null);
   const [isLoadingAISession, setIsLoadingAISession] = useState(false);
   const [aiLevel, setAiLevel] = useState<string>('medium');
-  
+
   // For lobby games, also get the session to get accurate player IDs
   const [lobbySession, setLobbySession] = useState<GameSession | null>(null);
   const [isLoadingLobbySession, setIsLoadingLobbySession] = useState(false);
@@ -56,7 +56,7 @@ export const GamePage = () => {
   // Get opponent player ID (the other player in the lobby)
   const opponentId = lobby?.playerIds.find(id => id !== currentUserId);
   const { data: opponent } = usePlayerById(opponentId);
-  
+
   // Check if opponent is AI
   const isAIOpponent = opponentId === 'ai_p2' || opponentId?.startsWith('ai_');
 
@@ -76,7 +76,7 @@ export const GamePage = () => {
       setIsLoadingAISession(true);
       // Clear old session immediately when sessionId changes
       setAiSession(null);
-      
+
       (async () => {
         try {
           const { gameService } = await import("../../service/game.service");
@@ -114,7 +114,7 @@ export const GamePage = () => {
       setIsLoadingLobbySession(true);
       // Clear old session immediately when sessionId changes
       setLobbySession(null);
-      
+
       (async () => {
         try {
           const { gameService } = await import("../../service/game.service");
@@ -232,41 +232,12 @@ export const GamePage = () => {
     if (session?.game_state?.player_ids) return session.game_state.player_ids;
     return [];
   };
-  const activePlayerIds = isAIGame 
+  const activePlayerIds = isAIGame
     ? getPlayerIds(aiSession)
     : (getPlayerIds(lobbySession) || lobby?.playerIds || []);
 
-  // Poll for session status to detect when game ends
-  useEffect(() => {
-    let pollInterval: NodeJS.Timeout | null = null;
-
-    if (activeSessionId && (lobbySession || aiSession)) {
-      // Poll every 2 seconds to check if game has ended
-      pollInterval = setInterval(async () => {
-        try {
-          const { gameService } = await import("../../service/game.service");
-          const session = await gameService.getSession(activeSessionId);
-          const isEnded = session.status === 'finished' || session.status === 'abandoned';
-          
-          if (isEnded) {
-            // Game has ended, redirect back to lobby/games
-            clearInterval(pollInterval!);
-            pollInterval = null;
-            toast.success('Game has ended');
-            navigate(isAIGame ? "/app/games" : "/app/lobbies");
-          }
-        } catch (error) {
-          console.error('Failed to poll session status:', error);
-        }
-      }, 2000);
-    }
-
-    return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-    };
-  }, [activeSessionId, lobbySession, aiSession, isAIGame, navigate]);
+  // Note: Game-end detection is handled by WebSocket via onSessionEnded callback
+  // in ConnectFourGame component. No polling needed here.
 
   if (isAIGame && isLoadingAISession) {
     return (

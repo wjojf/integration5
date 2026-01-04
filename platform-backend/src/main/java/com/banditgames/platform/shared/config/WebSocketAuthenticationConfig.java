@@ -19,6 +19,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 import java.util.Collections;
 import java.util.List;
 
@@ -50,21 +52,25 @@ public class WebSocketAuthenticationConfig implements WebSocketMessageBrokerConf
                             try {
                                 Jwt jwt = jwtDecoder.decode(token);
                                 String userId = jwt.getSubject();
+                                String username = jwt.getClaimAsString("preferred_username");
+                                
+                                log.info("WebSocket CONNECT: Validating JWT for user={}, sub={}", username, userId);
 
-                                accessor.setUser(new UsernamePasswordAuthenticationToken(
-                                        userId,
-                                        null,
-                                        Collections.emptyList()
-                                ));
-
-                                SecurityContextHolder.getContext().setAuthentication(
-                                        new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList())
+                                // Provide ROLE_USER authority - required for message authorization
+                                var authorities = Collections.singletonList(
+                                    new SimpleGrantedAuthority("ROLE_USER")
                                 );
 
-                                log.debug("WebSocket connection authenticated for user: {}", userId);
+                                UsernamePasswordAuthenticationToken authentication = 
+                                    new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                                
+                                accessor.setUser(authentication);
+                                SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                                log.info("WebSocket connection authenticated for user: {} ({})", username, userId);
                             } catch (Exception e) {
-                                log.error("Failed to authenticate WebSocket connection", e);
-                                throw new IllegalArgumentException("Invalid JWT token");
+                                log.error("Failed to authenticate WebSocket connection: {}", e.getMessage(), e);
+                                throw new IllegalArgumentException("Invalid JWT token: " + e.getMessage());
                             }
                         } else {
                             log.warn("WebSocket connection attempt with invalid Authorization header format");

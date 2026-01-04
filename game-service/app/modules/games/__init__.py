@@ -35,8 +35,16 @@ except ImportError:
     pass
 
 
-def setup_module(api_prefix: str = "/api/v1") -> Optional[APIRouter]:
-    """Setup and configure the games module."""
+def setup_module(api_prefix: str = "/api/v1", start_websocket_consumer: bool = True) -> Optional[APIRouter]:
+    """
+    Setup and configure the games module.
+    
+    Args:
+        api_prefix: API prefix for routes (default: "/api/v1")
+        start_websocket_consumer: Whether to start the WebSocket event consumer.
+            Should be True for the main FastAPI process (where WebSocket clients connect)
+            and False for the consumer process (to avoid competing consumers on the same queue).
+    """
     if not getattr(settings, "MODULE_GAMES_ENABLED", True):
         return None
 
@@ -97,7 +105,16 @@ def setup_module(api_prefix: str = "/api/v1") -> Optional[APIRouter]:
     
     # Start consuming RabbitMQ events for WebSocket broadcasting using the
     # new, thread-safe consumer that uses per-thread RabbitMQ clients.
-    websocket_event_consumer.start_consuming()
+    # IMPORTANT: Only start in the main FastAPI process where WebSocket clients connect.
+    # The consumer process should NOT start this to avoid competing consumers on the same queue,
+    # which would cause messages to be load-balanced and lost (since consumer process has no WS clients).
+    if start_websocket_consumer:
+        websocket_event_consumer.start_consuming()
+        import logging
+        logging.getLogger(__name__).info("GameWebSocketEventConsumer started for WebSocket broadcasting")
+    else:
+        import logging
+        logging.getLogger(__name__).info("GameWebSocketEventConsumer NOT started (consumer process mode)")
     
     # Create routers
     rest_router = create_router(game_service, session_service)

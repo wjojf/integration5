@@ -24,11 +24,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 // Gateway doesn't add CORS for /ws/** to avoid duplicate headers
                 // Use patterns to allow any port on localhost for development
                 .setAllowedOriginPatterns(
-                    "http://localhost:*",     // Allow any localhost port (for dev flexibility)
-                    "http://127.0.0.1:*",     // Allow 127.0.0.1 with any port
-                    "http://localhost:5173",  // Platform frontend
-                    "http://localhost:3333",  // Chess game frontend
-                    "http://localhost:8080"   // Gateway (for direct connections in dev)
+                    "http://localhost:*",     // Allow any localhost port (covers 5173, 8080, 3333, etc.)
+                    "http://127.0.0.1:*"      // Allow 127.0.0.1 with any port
                 )
                 .withSockJS();
     }

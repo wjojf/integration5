@@ -10,9 +10,16 @@ import { lobbyService } from '../../service/lobby.service';
 const { LOBBY } = QUERY_KEYS
 
 export const useAllLobbies = (params?: LobbySearchParams) => {
+  // Ensure pagination params are always included
+  const searchParams: LobbySearchParams = {
+    page: 0,
+    size: 20,
+    ...params,
+  };
+
   return useQuery({
-    queryKey: params ? [...LOBBY.ALL, params] : LOBBY.ALL,
-    queryFn: () => lobbyService.getAll(params),
+    queryKey: [...LOBBY.ALL, searchParams],
+    queryFn: () => lobbyService.getAll(searchParams),
   });
 };
 
@@ -67,7 +74,7 @@ export const useStartLobby = () => {
     mutationFn: ({ lobbyId, data }: { lobbyId: string; data: StartLobbyRequest }) => lobbyService.start(lobbyId, data),
     onSuccess: (data, variables) => {
       // Invalidate all lobby queries to refresh data
-      [LOBBY.ALL, LOBBY.CURRENT_PLAYER, LOBBY.BY_ID(variables.lobbyId)].forEach(queryKey => 
+      [LOBBY.ALL, LOBBY.CURRENT_PLAYER, LOBBY.BY_ID(variables.lobbyId)].forEach(queryKey =>
         queryClient.invalidateQueries({ queryKey })
       );
     },
@@ -109,7 +116,7 @@ export const useLeaveLobby = () => {
       // Even on error, clear the cache if it's a "not in lobby" error
       // This handles cases where the player is already not in the lobby
       const errorMessage = error?.response?.data?.message || error?.message || '';
-      if (errorMessage.toLowerCase().includes("not in the lobby") || 
+      if (errorMessage.toLowerCase().includes("not in the lobby") ||
           errorMessage.toLowerCase().includes("player is not in")) {
         queryClient.invalidateQueries({ queryKey: LOBBY.ALL });
         queryClient.invalidateQueries({ queryKey: LOBBY.CURRENT_PLAYER });

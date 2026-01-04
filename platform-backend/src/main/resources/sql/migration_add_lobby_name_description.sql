@@ -1,33 +1,17 @@
 -- Migration: Add name and description columns to lobbies table
 -- This script adds the name and description columns to the existing lobbies table
 -- Run this script if your database already exists and doesn't have these columns
+-- Uses IF NOT EXISTS syntax compatible with Spring Boot's SQL parser
 
--- Add description column (nullable)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'lobbies' AND column_name = 'description'
-    ) THEN
-        ALTER TABLE lobbies ADD COLUMN description VARCHAR(500);
-    END IF;
-END $$;
+-- Add description column (nullable) - IF NOT EXISTS prevents error if column exists
+ALTER TABLE lobbies ADD COLUMN IF NOT EXISTS description VARCHAR(500);
 
--- Add name column (NOT NULL with default for existing rows)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'lobbies' AND column_name = 'name'
-    ) THEN
-        -- First add the column as nullable
-        ALTER TABLE lobbies ADD COLUMN name VARCHAR(100);
-        
-        -- Update existing rows with a default name
-        UPDATE lobbies SET name = 'Untitled Lobby' WHERE name IS NULL;
-        
-        -- Now make it NOT NULL
-        ALTER TABLE lobbies ALTER COLUMN name SET NOT NULL;
-    END IF;
-END $$;
+-- Add name column (nullable first, then we'll populate and make NOT NULL)
+ALTER TABLE lobbies ADD COLUMN IF NOT EXISTS name VARCHAR(100);
+
+-- Update any existing rows that have NULL name with a default value
+UPDATE lobbies SET name = 'Untitled Lobby' WHERE name IS NULL;
+
+-- Ensure name column is NOT NULL (safe to run multiple times)
+ALTER TABLE lobbies ALTER COLUMN name SET NOT NULL;
 

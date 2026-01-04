@@ -110,12 +110,17 @@ export const ConnectFourGame = ({ sessionId, playerIds, lobbyId, aiLevel, onGame
       // Verify session is still active
       if (session.status !== 'active') {
         console.log('Session is no longer active, skipping AI move');
+        // Update local state to match backend to prevent infinite loop
+        updateGameState(session.game_state, session.current_player_id, session.status, session.winner_id);
         return;
       }
 
       // Verify it's still the AI's turn (session state is source of truth)
       if (!isAIPlayer(session.current_player_id)) {
-        console.log('Not AI turn anymore, skipping AI move');
+        console.log('Not AI turn anymore, skipping AI move. Backend says current player is:', session.current_player_id);
+        // IMPORTANT: Update local state to match backend to prevent infinite loop!
+        // This happens when WebSocket events are missed or state is out of sync
+        updateGameState(session.game_state, session.current_player_id, session.status, session.winner_id);
         return;
       }
       
@@ -148,16 +153,18 @@ export const ConnectFourGame = ({ sessionId, playerIds, lobbyId, aiLevel, onGame
       // The WebSocket will update the state when the move is applied
     } catch (error: any) {
       console.error('Failed to get AI move:', error);
+      // Backend sends error in 'error' field, not 'detail'
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || error?.message || 'Unknown error';
       // Only show error if it's not a session validation error
-      if (!error?.response?.data?.detail?.includes('not active') && 
-          !error?.response?.data?.detail?.includes('not found')) {
-        toast.error('AI move failed: ' + (error?.response?.data?.detail || error?.message || 'Unknown error'));
+      if (!errorMessage?.includes('not active') && 
+          !errorMessage?.includes('not found')) {
+        toast.error('AI move failed: ' + errorMessage);
       }
     } finally {
       setIsAIMakingMove(false);
       aiProcessingRef.current = false;
     }
-  }, [sessionId, currentPlayerId, gameStatus, aiLevel, playerIds]);
+  }, [sessionId, currentPlayerId, gameStatus, aiLevel, playerIds, updateGameState]);
 
   // Auto-trigger AI move when it's AI's turn
   useEffect(() => {
@@ -240,7 +247,8 @@ export const ConnectFourGame = ({ sessionId, playerIds, lobbyId, aiLevel, onGame
       // The WebSocket will update the state when the move is applied
     } catch (error: any) {
       console.error('Failed to apply move:', error);
-      const errorMessage = error?.response?.data?.detail || error?.message || 'Failed to apply move';
+      // Backend sends error in 'error' field, not 'detail'
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.detail || error?.message || 'Failed to apply move';
       
       // Check if error is about turn validation
       if (errorMessage.toLowerCase().includes('turn') || errorMessage.toLowerCase().includes('not your turn')) {

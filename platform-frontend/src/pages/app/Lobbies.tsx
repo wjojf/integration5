@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { Users, Search, Plus, Crown, Play, LogOut, Gamepad2, X, Edit } from "lucide-react";
+import { Users, Search, Plus, Crown, Play, LogOut, Gamepad2, X, Edit, ChevronLeft, ChevronRight } from "lucide-react";
 import { useKeycloak } from "@react-keycloak/web";
 
 import { InputComponents, DisplayComponents } from '../../components/app'
@@ -21,7 +21,8 @@ const CHESS_GAME_ID = "550e8400-e29b-41d4-a716-446655440002"
 export const Lobbies = () => {
   const { keycloak } = useKeycloak();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useState<LobbySearchParams>({});
+  const [searchParams, setSearchParams] = useState<LobbySearchParams>({ page: 0, size: 10 });
+  const [currentPage, setCurrentPage] = useState(0);
   const [gameIdFilter, setGameIdFilter] = useState("");
   const [selectedGameId, setSelectedGameId] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -46,6 +47,25 @@ export const Lobbies = () => {
   const updateLobby = useUpdateLobby();
 
   const lobbies = lobbiesData?.content || [];
+  const totalPages = lobbiesData?.totalPages || 0;
+  const totalElements = lobbiesData?.totalElements || 0;
+
+  // Pagination handlers
+  const handlePreviousPage = () => {
+    if (currentPage > 0) {
+      const newPage = currentPage - 1;
+      setCurrentPage(newPage);
+      setSearchParams((prev: LobbySearchParams) => ({ ...prev, page: newPage }));
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      const newPage = currentPage + 1;
+      setCurrentPage(newPage);
+      setSearchParams((prev: LobbySearchParams) => ({ ...prev, page: newPage }));
+    }
+  };
 
   // Check if current user is the host
   const isHost = currentLobby?.hostId === keycloak.tokenParsed?.sub;
@@ -92,14 +112,14 @@ export const Lobbies = () => {
     const currentUserId = keycloak.tokenParsed?.sub;
     const sessionId = currentLobby?.sessionId;
     const isChessGame = currentLobby?.gameId === CHESS_GAME_ID;
-    
+
     // For chess games, don't redirect here - LobbyDetail handles it with external game instance
     if (isChessGame) {
       return;
     }
-    
-    if (sessionId && 
-        currentUserId && 
+
+    if (sessionId &&
+        currentUserId &&
         currentLobby.playerIds?.includes(currentUserId) &&
         currentLobby.status !== 'COMPLETED' &&
         currentLobby.status !== 'CANCELLED') {
@@ -216,7 +236,7 @@ export const Lobbies = () => {
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || "Failed to leave lobby";
       // If error is "not in lobby", treat it as success (idempotent operation)
-      if (errorMessage.toLowerCase().includes("not in the lobby") || 
+      if (errorMessage.toLowerCase().includes("not in the lobby") ||
           errorMessage.toLowerCase().includes("player is not in")) {
         toast.success("Left lobby successfully!");
         // Clear cache to ensure UI is updated
@@ -347,7 +367,7 @@ export const Lobbies = () => {
       // Then leave the lobby
       await leaveLobby.mutateAsync(currentLobby.id);
       toast.success('Left the lobby successfully');
-      
+
       // Refetch to update UI
       await refetchCurrentLobby();
       refetch();
@@ -355,7 +375,7 @@ export const Lobbies = () => {
       console.error('Failed to force leave:', error);
       const errorMessage = error?.response?.data?.message || error?.response?.data?.detail || 'Failed to leave lobby';
       // If error is "not in lobby", treat it as success (idempotent operation)
-      if (errorMessage.toLowerCase().includes("not in the lobby") || 
+      if (errorMessage.toLowerCase().includes("not in the lobby") ||
           errorMessage.toLowerCase().includes("player is not in")) {
         toast.success('Left the lobby successfully');
         // Refetch to update UI
@@ -792,6 +812,35 @@ export const Lobbies = () => {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePreviousPage}
+            disabled={currentPage === 0}
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Previous
+          </Button>
+
+          <span className="text-sm text-muted-foreground">
+            Page {currentPage + 1} of {totalPages} ({totalElements} lobbies)
+          </span>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNextPage}
+            disabled={currentPage >= totalPages - 1}
+          >
+            Next
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
         </div>
       )}
     </div>
