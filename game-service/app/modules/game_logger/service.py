@@ -224,6 +224,93 @@ class GameLoggerService:
             logger.error(f"Failed to log chess move: {e}", exc_info=True)
             return None
 
+    def log_connect_four_move(
+        self,
+        session_id: str,
+        move_number: int,
+        player_id: str,
+        move_data: Dict,
+        game_state: Dict,
+        game_status: str = "ongoing",
+    ) -> Optional[Dict]:
+        """
+        Log a Connect Four move from event data.
+        Events don't contain ML training data, so we log what's available.
+        """
+        if not settings.LOGGER_ENABLED:
+            return None
+
+        try:
+            # Extract board from game_state
+            board = game_state.get("board", [])
+            
+            # Convert 2D board to flat array (6 rows x 7 cols = 42)
+            board_flat = []
+            if isinstance(board, list) and len(board) > 0:
+                for row in board:
+                    if isinstance(row, list):
+                        board_flat.extend(row[:7])  # Ensure max 7 columns
+                    else:
+                        board_flat.append(0)
+                # Pad to 42 if needed
+                while len(board_flat) < 42:
+                    board_flat.append(0)
+                board_flat = board_flat[:42]  # Truncate to 42
+            else:
+                board_flat = [0] * 42
+            
+            # Extract played move (column) from move_data
+            played_move = move_data.get("column", 0) if isinstance(move_data, dict) else 0
+            
+            # Generate legal moves mask (columns that are not full)
+            legal_moves_mask = [1] * 7  # Default: all columns legal
+            if isinstance(board, list) and len(board) > 0:
+                for col in range(7):
+                    # Check if top row (row 0) is empty for this column
+                    if len(board) > 0 and isinstance(board[0], list) and col < len(board[0]):
+                        if board[0][col] != 0:
+                            legal_moves_mask[col] = 0  # Column is full
+            
+            # Store move data in board_state
+            board_state = {
+                "move": move_data,
+                "game_state": game_state,
+                "game_status": game_status,
+            }
+            
+            # Determine current_player based on player_ids in game_state
+            player_ids = game_state.get("player_ids", [])
+            if player_id in player_ids:
+                player_index = player_ids.index(player_id)
+                current_player = "p1" if player_index == 0 else "p2"
+                current_player_id = player_index + 1
+            else:
+                # Fallback: use move number
+                current_player = "p1" if move_number % 2 == 1 else "p2"
+                current_player_id = 1 if move_number % 2 == 1 else 2
+            
+            # Events don't have ML training data, so use placeholders
+            result = self.repository.log_move(
+                session_id=session_id,
+                move_number=move_number,
+                current_player=current_player,
+                current_player_id=current_player_id,
+                board_state=board_state,
+                board_flat=board_flat,
+                legal_moves_mask=legal_moves_mask,
+                played_move=played_move,
+                expert_policy=[0.0] * 7,  # No expert policy in events
+                expert_best_move=0,  # No expert best move in events
+                expert_value=0.5,  # No expert value in events
+                final_result=game_status,
+                game_status=game_status,
+            )
+            logger.debug(f"Connect Four move logged: session={session_id}, move={move_number}, column={played_move}")
+            return result
+        except Exception as e:
+            logger.error(f"Failed to log Connect Four move: {e}", exc_info=True)
+            return None
+
     # ==================== STATISTICS ====================
 
     def get_stats(self) -> Dict:

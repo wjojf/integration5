@@ -58,8 +58,9 @@ class GameLoggerEventConsumer:
 
     def _dict_to_game_started_event(self, data: Dict[str, Any]) -> GameStartedEvent:
         """Convert dictionary to GameStartedEvent."""
-        player_ids = data.get('playerIds', [])
-        starting_player_id = data.get('startingPlayerId')
+        # Support both snake_case and camelCase
+        player_ids = data.get('playerIds', []) or data.get('player_ids', [])
+        starting_player_id = data.get('startingPlayerId') or data.get('starting_player_id')
         if not starting_player_id and player_ids:
             # Default to first player if starting_player_id not provided
             starting_player_id = player_ids[0]
@@ -67,15 +68,20 @@ class GameLoggerEventConsumer:
             # Fallback to empty string if no players
             starting_player_id = ''
         
+        # Support both snake_case and camelCase for lobby_id and session_id
+        lobby_id = data.get('lobbyId') or data.get('lobby_id')
+        session_id = data.get('sessionId') or data.get('session_id')
+        
         return GameStartedEvent(
-            event_id=data.get('eventId', ''),
-            game_id=data.get('gameId', ''),
-            game_type=data.get('gameType', ''),
-            lobby_id=data.get('lobbyId'),
+            event_id=data.get('eventId', '') or data.get('event_id', ''),
+            game_id=data.get('gameId', '') or data.get('game_id', ''),
+            game_type=data.get('gameType', '') or data.get('game_type', ''),
+            lobby_id=lobby_id,
             player_ids=player_ids,
             starting_player_id=starting_player_id,
-            game_configuration=data.get('gameConfiguration', {}),
+            game_configuration=data.get('gameConfiguration', {}) or data.get('game_configuration', {}),
             timestamp=self._parse_timestamp(data.get('timestamp')),
+            session_id=session_id,
         )
 
     def _dict_to_move_response_event(self, data: Dict[str, Any]) -> GameMoveResponseEvent:
@@ -125,8 +131,14 @@ class GameLoggerEventConsumer:
     def _handle_game_start_event(self, event: GameStartedEvent) -> None:
         """Handle game start event."""
         try:
-            # Use game_id as session_id (for chess games, they are the same)
-            session_id = event.game_id
+            # Use session_id from event if available, otherwise fallback to game_id
+            # For Connect Four: session_id is different from game_id (session_id comes from game.session.started)
+            # For Chess: session_id = game_id (they are the same)
+            session_id = event.session_id or event.game_id
+            
+            if not session_id:
+                logger.error(f"No session_id or game_id in event: {event}")
+                return
             
             # For chess games, always create session even if player_ids is empty
             # (player lookup might fail, but we still need to log moves)
@@ -140,7 +152,7 @@ class GameLoggerEventConsumer:
                 )
                 logger.info(f"Created game session: session_id={session_id}, game_type={event.game_type}, lobby_id={event.lobby_id}, player_ids_count={len(event.player_ids)}")
             else:
-                logger.warning(f"Skipping session creation - insufficient player_ids: game_id={session_id}, game_type={event.game_type}, player_ids_count={len(event.player_ids)}")
+                logger.warning(f"Skipping session creation - insufficient player_ids: session_id={session_id}, game_type={event.game_type}, player_ids_count={len(event.player_ids)}")
         except Exception as e:
             logger.error(f"Failed to create game session: {e}", exc_info=True)
 
@@ -251,11 +263,19 @@ class GameLoggerEventConsumer:
                     game_state=state_after,
                     game_status=event.game_status,
                 )
+            elif game_type == "connect_four":
+                # For Connect Four, use event-based logging (extracts available data from events)
+                self.game_logger_service.log_connect_four_move(
+                    session_id=session_id,
+                    move_number=move_number,
+                    player_id=event.player_id,
+                    move_data=move_data,
+                    game_state=state_after,
+                    game_status=event.game_status,
+                )
             else:
-                # For other games (like Connect Four), use full ML logging
-                # This requires ML training data which may not be available from events
-                logger.warning(f"Full ML logging not supported for game_type={game_type} via events. Use direct API call.")
-                # For now, just log a simplified version
+                # For other games, use simplified logging as fallback
+                logger.info(f"Using simplified logging for game_type={game_type} (ML training data not available in events)")
                 self.game_logger_service.log_chess_move(
                     session_id=session_id,
                     move_number=move_number,

@@ -32,9 +32,8 @@ export function Chatbot(): JSX.Element {
         const payload: ChatRequest = {message, user_id: userId}
 
         try {
+            // The mutation will optimistically update the cache, so messages will appear immediately
             await sendMutation.mutateAsync(payload);
-            // Wait for the history to be refetched to show the new message
-            await reFetchFn();
         } catch (error) {
             toast.error("Could not send message. Please try again.");
         }

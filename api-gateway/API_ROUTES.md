@@ -39,9 +39,9 @@ Routes to: `game-service:8000`
 - `POST /api/v1/games/sessions/{session_id}/moves` - Apply move to session
 
 ### Chatbot Module
-- `POST /api/v1/games/chatbot/chat` - Send chat message
-- `GET /api/v1/games/chatbot/conversation/{conversation_id}` - Get conversation history
-- `GET /api/v1/games/chatbot/health` - Chatbot health check
+- `POST /api/v1/chatbot/chat` - Send chat message
+- `GET /api/v1/chatbot/conversation/{conversation_id}` - Get conversation history
+- `GET /api/v1/chatbot/health` - Chatbot health check
 
 **Rate Limit**: 50 req/s, burst 100
 

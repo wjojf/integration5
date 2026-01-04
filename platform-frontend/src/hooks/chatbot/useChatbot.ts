@@ -31,13 +31,38 @@ export const useChatbotMessage = () => {
             }
             return chatbotService.addMessage(payload)
         },
-        onSuccess: async (response) => {
+        onSuccess: async (response, variables) => {
             const newConversationId = response.conversation_id
+            const oldConversationId = conversationId
+            
+            // Update conversation cookie
             setConversationCookie(newConversationId)
-            // Invalidate and refetch the conversation history
-            await queryClient.invalidateQueries({ queryKey: CHATBOT.HISTORY(newConversationId) })
-            // Refetch to ensure we have the latest messages
-            await queryClient.refetchQueries({ queryKey: CHATBOT.HISTORY(newConversationId) })
+            
+            // If conversation ID changed, remove old query data
+            if (oldConversationId && oldConversationId !== newConversationId) {
+                queryClient.removeQueries({ queryKey: CHATBOT.HISTORY(oldConversationId) })
+            }
+            
+            // Optimistically update the cache with the new messages
+            const queryKey = CHATBOT.HISTORY(newConversationId)
+            const existingData = queryClient.getQueryData<{ conversation_id: string; history: Array<{ role: string; content: string }> }>(queryKey)
+            
+            // Add user message and bot response to history
+            const newMessages = [
+                ...(existingData?.history ?? []),
+                { role: "user" as const, content: variables.message },
+                { role: "assistant" as const, content: response.response }
+            ]
+            
+            // Update cache optimistically
+            queryClient.setQueryData(queryKey, {
+                conversation_id: newConversationId,
+                history: newMessages
+            })
+            
+            // Refetch in background to ensure we have the latest from server (but don't wait)
+            queryClient.invalidateQueries({ queryKey })
+            queryClient.refetchQueries({ queryKey })
         }
     })
 }

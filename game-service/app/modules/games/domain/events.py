@@ -17,6 +17,7 @@ class GameStartedEvent:
     player_ids: List[str]
     starting_player_id: str
     game_configuration: Dict[str, Any]
+    session_id: Optional[str] = None  # session_id from game.session.started event
 
 
 @dataclass
