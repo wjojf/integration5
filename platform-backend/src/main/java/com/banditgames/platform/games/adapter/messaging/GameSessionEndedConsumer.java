@@ -18,10 +18,11 @@ import java.util.UUID;
  * Game-service doesn't know about lobbies, so we query by sessionId to find the lobby.
  * 
  * Flow:
- * 1. Game Service publishes: game.session.ended (with session_id, no lobby_id)
- * 2. This consumer queries lobby by sessionId
- * 3. Publishes GameEndedDomainEvent with the found lobbyId
- * 4. GameEventListener handles the event and clears sessionId from lobby
+ * 1. Game Service publishes: game.session.ended to topic exchange
+ * 2. Topic exchange forwards to fanout exchange (game.session.ended.fanout)
+ * 3. Fanout broadcasts to all bound queues (lobby, achievements, etc.)
+ * 4. This consumer receives from lobby queue and publishes GameEndedDomainEvent
+ * 5. GameEventListener handles the event and clears sessionId from lobby
  */
 @Slf4j
 @Component
@@ -33,10 +34,12 @@ public class GameSessionEndedConsumer {
     
     /**
      * Consumes game session ended events and publishes GameEndedDomainEvent.
+     * Uses the lobby-specific queue bound to the fanout exchange to ensure
+     * this consumer always receives the message (no competing consumers).
      * 
      * @param event The game session ended event from game-service
      */
-    @RabbitListener(queues = "${game.events.queues.session-ended}")
+    @RabbitListener(queues = "${game.events.queues.session-ended-lobby}")
     public void onGameSessionEnded(Map<String, Object> event) {
         try {
             String sessionIdStr = (String) event.get("session_id");

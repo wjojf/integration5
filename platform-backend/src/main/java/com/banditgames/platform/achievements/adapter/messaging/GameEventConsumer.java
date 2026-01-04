@@ -16,9 +16,10 @@ import java.util.UUID;
  * achievement evaluation when criteria might be met.
  * 
  * Architecture:
- * - Consumes game.session.ended and game.move.applied events
+ * - Consumes game.session.ended (via fanout) and game.move.applied events
  * - Delegates to achievement evaluation service
  * - Follows EDA pattern for loose coupling
+ * - Uses fanout exchange for session ended to ensure all consumers receive message
  */
 @Slf4j
 @Component
@@ -30,8 +31,10 @@ public class GameEventConsumer {
     /**
      * Consumes game.session.ended events from RabbitMQ.
      * Triggers achievement evaluation for all players in the game.
+     * Uses the achievements-specific queue bound to the fanout exchange to ensure
+     * this consumer always receives the message (no competing consumers).
      */
-    @RabbitListener(queues = "${game.events.queues.session-ended}")
+    @RabbitListener(queues = "${game.events.queues.session-ended-achievements}")
     public void onGameSessionEnded(Map<String, Object> event) {
         try {
             log.debug("Received game.session.ended event: {}", event);

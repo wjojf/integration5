@@ -8,7 +8,7 @@ import type {Game } from '../../types/app.types'
 import { Badge } from '../../components/shared'
 import { InputComponents, DisplayComponents } from '../../components/app'
 import { useGetAllGames } from '../../hooks/game/useGame'
-import { useCreateLobby, useCurrentPlayerLobby, useStartLobby } from '../../hooks/lobby/useLobby'
+import { useCreateLobby, useCurrentPlayerLobby } from '../../hooks/lobby/useLobby'
 import { gameService, CreateSessionRequest } from '../../service/game.service'
 import { aiPlayerService, LevelsResponse } from '../../service/aiPlayer.service'
 import { useKeycloak } from '@react-keycloak/web'
@@ -37,7 +37,6 @@ export const GameLibrary = () => {
   const { data: gamesResponse = {} as GamesResponse, isLoading: isLoadingGames } = useGetAllGames()
   const { games = [] } = gamesResponse
   const createLobby = useCreateLobby()
-  const startLobby = useStartLobby()
   const { refetch: refetchCurrentLobby } = useCurrentPlayerLobby()
 
   const filteredGames = games.filter((game) =>
@@ -105,24 +104,18 @@ export const GameLibrary = () => {
         return
       }
 
-      // Create lobby with name and description
-      const lobby = await createLobby.mutateAsync({
+      // Create lobby with name and description (don't start it yet - let others join first)
+      await createLobby.mutateAsync({
         name: `${selectedGame.title} Lobby`,
         description: `A lobby for ${selectedGame.title}`,
         maxPlayers: 2,
         private: false,
       })
       
-      // Start the lobby with the selected game
-      await startLobby.mutateAsync({
-        lobbyId: lobby.id,
-        data: { gameId: selectedGame.id.toString() }
-      })
-      
-      toast.success("Lobby created and started! Waiting for game session...")
+      toast.success("Lobby created! Waiting for other players to join...")
       setShowPlayDialog(false)
       
-      // Navigate to lobbies - the useEffect in Lobbies will redirect to game page when sessionId is ready
+      // Navigate to lobbies page where host can see the lobby and start when ready
       navigate("/app/lobbies")
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || "Failed to create lobby"
@@ -275,10 +268,10 @@ export const GameLibrary = () => {
               <Button
                 className="w-full justify-start"
                 onClick={handleStartLobby}
-                disabled={createLobby.isPending || startLobby.isPending}
+                disabled={createLobby.isPending}
               >
                 <Users className="w-4 h-4 mr-2" />
-                {createLobby.isPending || startLobby.isPending ? "Creating..." : "Start a Lobby (Play with Friends)"}
+                {createLobby.isPending ? "Creating..." : "Create a Lobby (Play with Friends)"}
               </Button>
 
               <Button

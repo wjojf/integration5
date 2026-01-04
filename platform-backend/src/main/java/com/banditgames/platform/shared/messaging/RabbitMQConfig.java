@@ -41,6 +41,14 @@ public class RabbitMQConfig {
     @Value("${game.events.queues.session-ended}")
     private String sessionEndedQueue;
     
+    // Separate queues for each consumer of session ended events
+    // Both bound to same routing key = each receives a copy (no competing consumers)
+    @Value("${game.events.queues.session-ended-lobby:game.session.ended.lobby}")
+    private String sessionEndedLobbyQueue;
+    
+    @Value("${game.events.queues.session-ended-achievements:game.session.ended.achievements}")
+    private String sessionEndedAchievementsQueue;
+    
     @Value("${game.events.queues.move-applied:game.move.applied}")
     private String moveAppliedQueue;
     
@@ -165,7 +173,7 @@ public class RabbitMQConfig {
     }
     
     /**
-     * Queue for game session ended events.
+     * Queue for game session ended events (legacy - kept for backwards compatibility).
      */
     @Bean
     public Queue sessionEndedQueue() {
@@ -174,6 +182,62 @@ public class RabbitMQConfig {
             .withArgument("x-dead-letter-exchange", dlxName)
             .withArgument("x-dead-letter-routing-key", dlqName)
             .build();
+    }
+    
+    // ============================================
+    // Session Ended Event Distribution
+    // Multiple queues bound to same routing key = each receives a copy
+    // This achieves fanout behavior without E2E binding complexity
+    // ============================================
+    
+    /**
+     * Queue for lobby cleanup on session ended.
+     * Consumed by GameSessionEndedConsumer.
+     */
+    @Bean
+    public Queue sessionEndedLobbyQueue() {
+        return QueueBuilder
+            .durable(sessionEndedLobbyQueue)
+            .withArgument("x-dead-letter-exchange", dlxName)
+            .withArgument("x-dead-letter-routing-key", dlqName)
+            .build();
+    }
+    
+    /**
+     * Queue for achievements evaluation on session ended.
+     * Consumed by GameEventConsumer (achievements).
+     */
+    @Bean
+    public Queue sessionEndedAchievementsQueue() {
+        return QueueBuilder
+            .durable(sessionEndedAchievementsQueue)
+            .withArgument("x-dead-letter-exchange", dlxName)
+            .withArgument("x-dead-letter-routing-key", dlqName)
+            .build();
+    }
+    
+    /**
+     * Bind lobby queue directly to topic exchange with session ended routing key.
+     * When game-service publishes "game.session.ended", this queue receives a copy.
+     */
+    @Bean
+    public Binding sessionEndedLobbyBinding() {
+        return BindingBuilder
+            .bind(sessionEndedLobbyQueue())
+            .to(gameEventsExchange())
+            .with("game.session.ended");
+    }
+    
+    /**
+     * Bind achievements queue directly to topic exchange with session ended routing key.
+     * When game-service publishes "game.session.ended", this queue receives a copy.
+     */
+    @Bean
+    public Binding sessionEndedAchievementsBinding() {
+        return BindingBuilder
+            .bind(sessionEndedAchievementsQueue())
+            .to(gameEventsExchange())
+            .with("game.session.ended");
     }
     
     @Bean

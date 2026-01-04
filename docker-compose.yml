@@ -208,6 +208,10 @@ services:
       CHESS_GAME_SERVICE_URL: http://chess-game-backend:8080
       CHESS_GAME_API_KEY: ${CHESS_GAME_API_KEY:-}
       CHESS_GAME_EXCHANGE: ${CHESS_GAME_EXCHANGE:-gameExchange}
+
+      # Keycloak Configuration (for JWT validation)
+      # Uses Docker internal URL to fetch JWK set for signature validation
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/banditgames/protocol/openid-connect/certs
     depends_on:
       postgres:
         condition: service_healthy
@@ -215,6 +219,8 @@ services:
         condition: service_healthy
       game-service:
         condition: service_healthy
+      keycloak:
+        condition: service_started  # For JWT validation
     networks:
       - banditgames-network
     healthcheck:
