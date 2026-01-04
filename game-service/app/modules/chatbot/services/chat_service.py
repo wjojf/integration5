@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import uuid
 import hashlib
+import base64
+import json
 from typing import Optional, List, Dict, Tuple
 
 from app.config import settings
@@ -80,12 +82,50 @@ class ChatbotService:
     def _extract_bearer_token(self, auth_header: Optional[str]) -> Optional[str]:
         if not auth_header:
             return None
+        # Handle both "Bearer <token>" and just "<token>" formats
         if auth_header.startswith("Bearer "):
-            return auth_header[len("Bearer "):].strip()
-        return None
+            token = auth_header[len("Bearer "):].strip()
+        else:
+            token = auth_header.strip()
+        # Return None if token is empty
+        return token if token else None
 
-    def _get_cache_key(self, message: str, user_id: Optional[str]) -> str:
-        base = f"{user_id or 'anon'}|{message.lower().strip()}"
+    def _extract_user_id_from_token(self, token: Optional[str]) -> Optional[str]:
+        """
+        Extract user_id (subject) from JWT token without verification.
+        JWT tokens are base64url encoded JSON, so we can decode the payload.
+        """
+        if not token:
+            return None
+        
+        try:
+            # JWT format: header.payload.signature
+            parts = token.split('.')
+            if len(parts) < 2:
+                return None
+            
+            # Decode the payload (second part)
+            payload = parts[1]
+            # Add padding if needed (base64url decoding)
+            padding = 4 - len(payload) % 4
+            if padding != 4:
+                payload += '=' * padding
+            
+            # Decode base64url
+            decoded = base64.urlsafe_b64decode(payload)
+            data = json.loads(decoded)
+            
+            # Extract 'sub' claim (subject/user_id)
+            user_id = data.get('sub')
+            return user_id
+        except Exception as e:
+            print(f"[chatbot] Failed to extract user_id from token: {e}")
+            return None
+
+    def _get_cache_key(self, message: str, user_id: Optional[str], context_kinds: Optional[List[str]] = None) -> str:
+        # Include context_kinds in cache key to differentiate cached responses with/without user context
+        context_str = ",".join(sorted(context_kinds)) if context_kinds else "no_context"
+        base = f"{user_id or 'anon'}|{message.lower().strip()}|{context_str}"
         return hashlib.md5(base.encode()).hexdigest()
 
     def _is_cached(self, cache_key: str) -> bool:
@@ -143,21 +183,42 @@ class ChatbotService:
             )
 
         conv_id = self._get_or_create_conversation_id(conversation_id)
-        cache_key = self._get_cache_key(message, user_id)
-
-        if not bypass_cache and self._is_cached(cache_key):
-            return self._get_cached_response(cache_key, conv_id)
-
         token = self._extract_bearer_token(auth_header)
+        
+        # Debug logging for token extraction
+        if not token:
+            print(f"[chatbot] Warning: No token extracted from auth_header. auth_header present: {auth_header is not None}")
+        else:
+            print(f"[chatbot] Token extracted successfully. Token length: {len(token)}, starts with: {token[:20] if len(token) > 20 else token}...")
 
-        # Check if we need user context (for both LLM and placeholder modes)
-        user_ctx_text = ""
-        user_ctx_sources: List[str] = []
+        # Extract user_id from token if not provided
+        if not user_id and token:
+            user_id = self._extract_user_id_from_token(token)
+            if user_id:
+                print(f"[chatbot] Extracted user_id from token: {user_id}")
+            else:
+                print(f"[chatbot] Warning: Could not extract user_id from token")
+
+        # Check if we need user context BEFORE checking cache
+        # This ensures we fetch fresh data for user-specific queries
         context_kinds: List[str] = []
         if token:
             context_kinds = self._needs_user_context(message)
-            if context_kinds:
-                user_ctx_text, user_ctx_sources = self._fetch_user_context(token, user_id, context_kinds)
+        
+        # Cache key includes context_kinds to differentiate cached responses with/without context
+        # This allows us to cache both generic responses and user-specific responses separately
+        cache_key = self._get_cache_key(message, user_id, context_kinds)
+        
+        # Check cache - but bypass cache if query needs fresh user context data
+        # This ensures achievement/match history queries always get current data
+        if not bypass_cache and not context_kinds and self._is_cached(cache_key):
+            return self._get_cached_response(cache_key, conv_id)
+
+        # Fetch user context if needed (for both LLM and placeholder modes)
+        user_ctx_text = ""
+        user_ctx_sources: List[str] = []
+        if context_kinds:
+            user_ctx_text, user_ctx_sources = self._fetch_user_context(token, user_id, context_kinds)
 
         # Decide whether to use LLM or placeholder
         if self.use_llm and self.llm_client is not None:
@@ -248,13 +309,17 @@ class ChatbotService:
             needs.append("friend_requests")
 
         # Achievements-related keywords - catch "how to get", "how do i get", "unlock", etc.
+        # Also catch questions about available achievements, Connect Four achievements, etc.
         achievement_keywords = [
             "my achievements", "my badges", "what did i unlock", "what have i unlocked",
             "achievements", "achievement", "badges", "badge", "unlock", "unlocked",
             "how to get", "how do i get", "how can i get", "how to unlock", "how do i unlock",
             "get achievement", "earn achievement", "obtain achievement",
             "what achievements", "which achievements", "show achievements", "list achievements",
-            "achievements do i", "achievements have i", "achievements unlocked"
+            "achievements do i", "achievements have i", "achievements unlocked",
+            "achievements available", "available achievements", "what achievements are",
+            "connect four achievements", "connect 4 achievements", "achievements in connect",
+            "achievements for connect", "achievements can i", "achievements can you"
         ]
         if any(k in m for k in achievement_keywords):
             needs.append("achievements")
@@ -281,12 +346,15 @@ class ChatbotService:
 
         return needs
 
-    def _fetch_user_context(self, token: str, user_id: Optional[str], kinds: List[str]) -> Tuple[str, List[str]]:
+    def _fetch_user_context(self, token: Optional[str], user_id: Optional[str], kinds: List[str]) -> Tuple[str, List[str]]:
         """
         Fetch user-related data from Java backend and return:
           - formatted text to append to prompt
           - sources list describing which APIs were used
         """
+        if not token:
+            return "(No authentication token provided. Cannot fetch user context.)", ["api:no_token"]
+        
         parts: List[str] = []
         sources: List[str] = []
 
@@ -294,6 +362,9 @@ class ChatbotService:
             try:
                 if k == "profile":
                     data = self.profile_service.get_profile(token)
+                    # Extract user_id from profile if not already available
+                    if not user_id and isinstance(data, dict):
+                        user_id = data.get("id")
                     parts.append(f"User profile (GET /api/platform/players):\n{data}")
                     sources.append("api:/api/platform/players")
 
@@ -310,16 +381,56 @@ class ChatbotService:
                     sources.append("api:/api/platform/friends?status=PENDING")
 
                 elif k == "achievements":
-                    if not user_id:
-                        parts.append("User achievements requested, but no user_id was provided.")
-                        sources.append("api:achievements_missing_user_id")
+                    # Always fetch all available achievements first (for information about how to get them)
+                    # Only fetch if we have a valid token (endpoint requires authentication)
+                    if token:
+                        try:
+                            all_achievements = self.achievement_service.get_all_achievements(token)
+                            if all_achievements:
+                                parts.append(f"All available achievements in the system (GET /api/platform/achievements):\n{all_achievements}")
+                                sources.append("api:/api/platform/achievements")
+                        except Exception as e:
+                            error_msg = str(e)
+                            print(f"[chatbot] Failed to fetch all achievements: {error_msg}")
+                            # If it's a 401, the token might be invalid - try to continue with user achievements
+                            if "401" not in error_msg:
+                                parts.append(f"(Could not fetch all achievements: {error_msg})")
                     else:
-                        achievements = self.achievement_service.get_achievements(user_id, token)
-                        data = {"achievements": achievements, "count": len(achievements)} if isinstance(achievements, list) else achievements
-                        parts.append(f"User achievements (GET /api/platform/achievements/users/{user_id}):\n{data}")
-                        sources.append("api:/api/platform/achievements/users/{userId}")
+                        print("[chatbot] No token provided, cannot fetch all achievements (endpoint requires authentication)")
+                    
+                    # Also fetch user's unlocked achievements if user_id is available
+                    # Try to get user_id from profile if not available
+                    if not user_id:
+                        try:
+                            profile_data = self.profile_service.get_profile(token)
+                            if isinstance(profile_data, dict):
+                                user_id = profile_data.get("id")
+                        except Exception:
+                            pass
+                    
+                    if user_id:
+                        try:
+                            user_achievements = self.achievement_service.get_achievements(user_id, token)
+                            data = {"achievements": user_achievements, "count": len(user_achievements)} if isinstance(user_achievements, list) else user_achievements
+                            parts.append(f"User's unlocked achievements (GET /api/platform/achievements/users/{user_id}):\n{data}")
+                            sources.append("api:/api/platform/achievements/users/{userId}")
+                        except Exception as e:
+                            print(f"[chatbot] Failed to fetch user achievements: {e}")
+                            parts.append(f"(Could not fetch user's unlocked achievements: {e})")
+                    else:
+                        parts.append("(User ID not available to fetch user's unlocked achievements)")
+                        sources.append("api:achievements_missing_user_id")
 
                 elif k == "match_history":
+                    # Try to get user_id from profile if not available
+                    if not user_id:
+                        try:
+                            profile_data = self.profile_service.get_profile(token)
+                            if isinstance(profile_data, dict):
+                                user_id = profile_data.get("id")
+                        except Exception:
+                            pass
+                    
                     if not user_id:
                         parts.append("User match history requested, but no user_id was provided.")
                         sources.append("api:match_history_missing_user_id")
@@ -338,7 +449,9 @@ class ChatbotService:
                         sources.append("api:/api/platform/lobbies/current")
 
             except Exception as e:
-                parts.append(f"(Failed to load {k} from platform API: {e})")
+                error_msg = str(e)
+                print(f"[chatbot] Failed to load {k} from API: {error_msg}")
+                parts.append(f"(Failed to load {k} from platform API: {error_msg})")
                 sources.append(f"api_failed:{k}")
 
         return "\n\n".join(parts), sources

@@ -101,6 +101,10 @@ class Settings(BaseSettings):
     # Platform Backend / API Gateway Configuration (for chatbot user context)
     JAVA_BACKEND_BASE_URL: Optional[str] = None  # API Gateway URL (defaults to http://127.0.0.1:8080 if not set)
     PLATFORM_BACKEND_URL: Optional[str] = None  # Direct platform backend URL (optional)
+    
+    # Service-to-Service Authentication
+    SERVICE_API_KEY: Optional[str] = None  # API key for service-to-service authentication
+    SERVICE_NAME: str = "game-service"  # Service name for service-to-service identification
 
     # ML Model Configuration (for future use)
     ML_MODEL_API_HOST: str = "localhost"

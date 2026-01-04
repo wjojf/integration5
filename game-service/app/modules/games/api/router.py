@@ -152,6 +152,34 @@ def create_router(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
     
+    # IMPORTANT: More specific routes must be defined BEFORE less specific ones
+    # This ensures FastAPI matches /games/sessions/player/{player_id}/history
+    # before /games/sessions/{session_id}
+    @router.get("/games/sessions/player/{player_id}/history")
+    async def get_match_history(player_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get match history for a player.
+        
+        Returns finished game sessions for the specified player, ordered by most recent first.
+        """
+        sessions = session_service.get_match_history(player_id=player_id, limit=limit)
+        
+        # Convert to response format
+        history = []
+        for session in sessions:
+            history.append({
+                "session_id": session.session_id,
+                "game_id": session.game_id,
+                "game_type": session.game_type,
+                "status": session.status.value,
+                "player_ids": session.player_ids,
+                "winner_id": session.winner_id,
+                "total_moves": session.total_moves,
+                "started_at": session.started_at.isoformat() if session.started_at else None,
+                "ended_at": session.ended_at.isoformat() if session.ended_at else None,
+            })
+        
+        return history
+    
     @router.get("/games/sessions/{session_id}", response_model=GetSessionResponse)
     async def get_session(session_id: str) -> GetSessionResponse:
         """Get a game session by ID."""
@@ -264,31 +292,6 @@ def create_router(
             raise ValidationError(str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to evaluate game: {str(e)}")
-    
-    @router.get("/games/sessions/player/{player_id}/history")
-    async def get_match_history(player_id: str, limit: int = 20) -> List[Dict[str, Any]]:
-        """Get match history for a player.
-        
-        Returns finished game sessions for the specified player, ordered by most recent first.
-        """
-        sessions = session_service.get_match_history(player_id=player_id, limit=limit)
-        
-        # Convert to response format
-        history = []
-        for session in sessions:
-            history.append({
-                "session_id": session.session_id,
-                "game_id": session.game_id,
-                "game_type": session.game_type,
-                "status": session.status.value,
-                "player_ids": session.player_ids,
-                "winner_id": session.winner_id,
-                "total_moves": session.total_moves,
-                "started_at": session.started_at.isoformat() if session.started_at else None,
-                "ended_at": session.ended_at.isoformat() if session.ended_at else None,
-            })
-        
-        return history
     
     @router.post("/games/sessions/{session_id}/abandon", response_model=AbandonSessionResponse)
     async def abandon_session(
