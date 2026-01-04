@@ -16,14 +16,20 @@ logger = logging.getLogger(__name__)
 
 
 class GameEventBroadcaster:
-    """Consumes RabbitMQ events and broadcasts to WebSocket connections."""
+    """Consumes RabbitMQ events and broadcasts to WebSocket connections.
+    
+    Uses unique queue names to avoid competing with platform-backend consumers.
+    Messages are received via topic exchange routing keys.
+    """
 
     def __init__(self, connection_manager: GameWebSocketManager):
         self.connection_manager = connection_manager
 
-        self._queue_move_applied = "game.move.applied"
-        self._queue_session_started = "game.session.started"
-        self._queue_session_ended = "game.session.ended"
+        # Use unique queue names for this service to avoid competing consumers
+        # with platform-backend. All queues bind to the same routing keys.
+        self._queue_move_applied = "game.websocket.move_applied"
+        self._queue_session_started = "game.websocket.session_started"
+        self._queue_session_ended = "game.websocket.session_ended"
 
         self._routing_key_move_applied = "game.move.applied"
         self._routing_key_session_started = "game.session.started"

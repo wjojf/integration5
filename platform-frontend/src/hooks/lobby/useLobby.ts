@@ -20,6 +20,8 @@ export const useAllLobbies = (params?: LobbySearchParams) => {
   return useQuery({
     queryKey: [...LOBBY.ALL, searchParams],
     queryFn: () => lobbyService.getAll(searchParams),
+    staleTime: 0, // Always consider data stale to ensure fresh fetches
+    refetchOnMount: 'always', // Always refetch when component mounts (important when navigating from GameLibrary)
   });
 };
 
@@ -38,6 +40,8 @@ export const useCurrentPlayerLobby = () => {
       }
     },
     retry: false,
+    staleTime: 0, // Always consider data stale to ensure fresh fetches
+    refetchOnMount: 'always', // Always refetch when component mounts (important when navigating from GameLibrary)
   });
 };
 
