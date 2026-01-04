@@ -6,8 +6,10 @@ import com.banditgames.platform.lobby.port.out.SaveLobbyPort;
 import com.banditgames.platform.shared.events.GameEndedDomainEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 
 @Slf4j
@@ -18,7 +20,8 @@ public class GameEventListener {
     private final LoadLobbyPort loadLobbyPort;
     private final SaveLobbyPort saveLobbyPort;
 
-    @ApplicationModuleListener
+    @EventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onGameEnded(GameEndedDomainEvent event) {
         log.info("Received GameEndedDomainEvent for lobby: {}", event.lobbyId());
 

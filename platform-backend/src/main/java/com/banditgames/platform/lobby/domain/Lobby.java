@@ -111,12 +111,13 @@ public class Lobby {
     }
 
     /**
-     * Resets the lobby after a game ends, clearing the session ID and resetting status to WAITING
+     * Resets the lobby after a game ends, clearing the session ID, game ID, and resetting status to WAITING
      * so that a new game can be started in the same lobby.
      */
     public void resetAfterGameEnd() {
         if (status == LobbyStatus.STARTED || status == LobbyStatus.IN_PROGRESS) {
             sessionId = null;
+            gameId = null;  // Clear gameId so players can select a new game
             status = LobbyStatus.WAITING;
         }
     }
