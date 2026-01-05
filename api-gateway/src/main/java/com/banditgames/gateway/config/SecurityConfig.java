@@ -31,7 +31,8 @@ public class SecurityConfig {
                     GatewayConstants.PATH_GAMES,
                     "/api/docs/**",  // Allow Swagger UI access
                     "/api/platform/register/**",  // Allow chess game registration (external service)
-                    "/api/external/**"  // Allow all external game endpoints
+                    "/api/external/**",  // Allow all external game endpoints
+                    "/api/v1/chatbot/**"  // Allow chatbot endpoints (no rate limiting or circuit breaker)
                 ).permitAll()
                     .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .pathMatchers(GatewayConstants.PATH_PATTERN_EXTERNAL).permitAll()

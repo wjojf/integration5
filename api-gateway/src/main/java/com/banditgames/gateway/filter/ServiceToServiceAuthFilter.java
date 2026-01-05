@@ -1,6 +1,5 @@
 package com.banditgames.gateway.filter;
 
-import com.banditgames.gateway.config.GatewayConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -66,7 +65,8 @@ public class ServiceToServiceAuthFilter implements GlobalFilter, Ordered {
         return path.startsWith("/actuator") ||
                 path.startsWith("/health") ||
                 path.startsWith("/fallback") ||
-                path.startsWith("/api/docs");
+                path.startsWith("/api/docs") ||
+                path.startsWith("/api/v1/chatbot");
     }
 
     private boolean isValidApiKey(String apiKey) {

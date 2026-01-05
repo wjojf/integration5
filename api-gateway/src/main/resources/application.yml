@@ -148,16 +148,13 @@ spring:
         # Game Service - Chatbot Routes
         # Routes /api/v1/chatbot/** to game-service
         # Must be BEFORE the general game-service route to match first
-        # No rate limiting to avoid 405 errors on chat endpoints
+        # No rate limiting or circuit breaker to avoid 405 errors on chat endpoints
         - id: game-service-chatbot
           uri: ${GAME_SERVICE_URL:http://127.0.0.1:8000}
           predicates:
             - Path=/api/v1/chatbot/**
           filters:
-            - name: CircuitBreaker
-              args:
-                name: gameService
-                fallbackUri: forward:/fallback/game
+            # No rate limiting or circuit breaker to avoid 405 errors on chat endpoints
             - name: AddRequestHeader
               args:
                 name: X-API-Key
