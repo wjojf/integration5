@@ -4,14 +4,22 @@ Game service for fetching game and match history information.
 from __future__ import annotations
 
 from typing import Dict, Any, List, Optional
+import os
 
 from .base_service import BaseAPIService
+from app.config import settings
 
 
 class GameService(BaseAPIService):
     """Service for fetching game and match history data."""
     
-    def get_match_history(self, user_id: str, token: str, limit: int = 20) -> Dict[str, Any]:
+    def __init__(self, base_url: Optional[str] = None) -> None:
+        # For game-service endpoints, call the service directly (not through gateway)
+        # This avoids routing issues when chatbot (inside game-service) calls game-service endpoints
+        game_service_url = base_url or os.getenv("GAME_SERVICE_URL") or "http://127.0.0.1:8000"
+        super().__init__(base_url=game_service_url)
+    
+    def get_match_history(self, user_id: str, token: Optional[str] = None, limit: int = 20) -> Dict[str, Any]:
         """
         Get match history for a user.
         

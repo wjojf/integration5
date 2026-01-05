@@ -86,6 +86,26 @@ spring:
                 name: X-API-Key
                 value: ${SERVICE_API_KEY:default-dev-key}
 
+        # Platform Backend - Chat Routes (No Rate Limiting)
+        # Routes /api/platform/chat/** to platform-backend for chat endpoints
+        # Must be BEFORE the general platform-backend route to match first
+        # No rate limiting to avoid 405 errors on chat endpoints
+        - id: platform-backend-chat
+          uri: ${PLATFORM_BACKEND_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/platform/chat/**
+          filters:
+            - StripPrefix=2
+            - PrefixPath=/api
+            - name: CircuitBreaker
+              args:
+                name: platformBackend
+                fallbackUri: forward:/fallback/platform
+            - name: AddRequestHeader
+              args:
+                name: X-API-Key
+                value: ${SERVICE_API_KEY:default-dev-key}
+
         # Platform Backend Routes
         - id: platform-backend
           uri: ${PLATFORM_BACKEND_URL:http://localhost:8081}
@@ -109,11 +129,45 @@ spring:
                 name: X-API-Key
                 value: ${SERVICE_API_KEY:default-dev-key}
 
-        # Game Service - All Routes (including WebSocket)
+        # Game Service - WebSocket (Connect Four game events)
+        # Routes /api/v1/games/ws/** to game-service for WebSocket connections
+        # Must be BEFORE the general game-service route to match first
+        # No rate limiting or circuit breaker to avoid websocket connection issues
+        - id: game-service-websocket
+          uri: ${GAME_SERVICE_URL:http://127.0.0.1:8000}
+          predicates:
+            - Path=/api/v1/games/ws/**
+          filters:
+            # Preserve all headers (especially token query param for authentication)
+            # No rate limiting or circuit breaker to avoid websocket connection issues
+            - name: AddRequestHeader
+              args:
+                name: X-API-Key
+                value: ${SERVICE_API_KEY:default-dev-key}
+
+        # Game Service - Chatbot Routes
+        # Routes /api/v1/chatbot/** to game-service
+        # Must be BEFORE the general game-service route to match first
+        # No rate limiting to avoid 405 errors on chat endpoints
+        - id: game-service-chatbot
+          uri: ${GAME_SERVICE_URL:http://127.0.0.1:8000}
+          predicates:
+            - Path=/api/v1/chatbot/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: gameService
+                fallbackUri: forward:/fallback/game
+            - name: AddRequestHeader
+              args:
+                name: X-API-Key
+                value: ${SERVICE_API_KEY:default-dev-key}
+
+        # Game Service - REST Routes
         - id: game-service
           uri: ${GAME_SERVICE_URL:http://127.0.0.1:8000}
           predicates:
-            - Path=/api/v1/games/**,/api/v1/chatbot/**,/api/v1/ai-player/**,/api/v1/ai_player/**
+            - Path=/api/v1/games/**,/api/v1/ai-player/**,/api/v1/ai_player/**
           filters:
             # Rewrite /api/v1/ai-player/** to /api/v1/ai_player/** (module uses underscore)
             # This handles frontend calls using hyphen, converting to underscore for game-service

@@ -42,6 +42,7 @@ export const useCurrentPlayerLobby = () => {
     retry: false,
     staleTime: 0, // Always consider data stale to ensure fresh fetches
     refetchOnMount: 'always', // Always refetch when component mounts (important when navigating from GameLibrary)
+    refetchInterval: 5000, // Poll every 5 seconds to keep lobby state updated for all party members
   });
 };
 

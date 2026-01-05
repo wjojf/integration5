@@ -335,6 +335,7 @@ services:
       
       # Service-to-Service Authentication
       SERVICE_API_KEY: ${SERVICE_API_KEY:-default-dev-key}
+      SERVICE_NAME: game-service
     volumes:
       - game_service_data:/app/data
     depends_on:
