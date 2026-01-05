@@ -19,13 +19,24 @@ class BaseAPIService:
             or "http://127.0.0.1:8080"
         ).rstrip("/")
     
-    def _get(self, path: str, token: str, timeout: float = 10.0) -> Dict[str, Any]:
-        """Make a GET request."""
-        url = f"{self.base_url}{path}"
+    def _get_headers(self, token: str) -> Dict[str, str]:
+        """Build headers for API requests, including service-to-service authentication."""
         headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/json",
         }
+        
+        # Add service-to-service API key if configured
+        if settings.SERVICE_API_KEY:
+            headers["X-API-Key"] = settings.SERVICE_API_KEY
+            headers["X-Service-Name"] = "game-service"
+        
+        return headers
+    
+    def _get(self, path: str, token: str, timeout: float = 10.0) -> Dict[str, Any]:
+        """Make a GET request."""
+        url = f"{self.base_url}{path}"
+        headers = self._get_headers(token)
         try:
             with httpx.Client(timeout=timeout) as client:
                 r = client.get(url, headers=headers)
@@ -41,11 +52,8 @@ class BaseAPIService:
     def _post(self, path: str, token: str, data: Dict[str, Any], timeout: float = 10.0) -> Dict[str, Any]:
         """Make a POST request."""
         url = f"{self.base_url}{path}"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
+        headers = self._get_headers(token)
+        headers["Content-Type"] = "application/json"
         try:
             with httpx.Client(timeout=timeout) as client:
                 r = client.post(url, headers=headers, json=data)

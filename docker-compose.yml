@@ -332,6 +332,9 @@ services:
       # Platform Backend Configuration
       PLATFORM_BACKEND_URL: http://platform-backend:8081
       JAVA_BACKEND_BASE_URL: http://api-gateway:8080
+      
+      # Service-to-Service Authentication
+      SERVICE_API_KEY: ${SERVICE_API_KEY:-default-dev-key}
     volumes:
       - game_service_data:/app/data
     depends_on:
